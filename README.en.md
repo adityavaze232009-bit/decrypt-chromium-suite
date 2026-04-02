@@ -102,6 +102,12 @@ pyinstaller --onefile --noconsole --name "ChromiumAuditor" main.py
 > `--noconsole` is **mandatory** for total stealth. Without it, a black terminal window appears upon execution.
 > Compatible with **Batch** calls (`call ChromiumAuditor.exe`) and background execution (`start /b ChromiumAuditor.exe`).
 
+### 🛡️ Hardening and Obfuscation
+To protect the binary against reverse engineering and antivirus, see the [Hybrid Obfuscation Guide](docs/OBFUSCATION_GUIDE.en.md).
+
+### ⚙️ Advanced Compilation Guide
+For detailed instructions on hybrid (Windows + WSL) or pure (Linux with Wine) flows, see the [Compilation Flows Guide](docs/COMPILATION_FLOWS.en.md).
+
 ## 🚦 CLI Argument Panel
 
 | Short | Long | Description |
