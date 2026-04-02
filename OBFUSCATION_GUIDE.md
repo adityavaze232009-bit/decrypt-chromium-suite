@@ -86,6 +86,9 @@ python -c "import base64; print(base64.b64encode(b'TU_TOKEN_AQUI').decode())"
 
 ### Paso 2: Generar Capas Metamórficas
 
+> [!WARNING]
+> **Limitación conocida de `ofuscator.py`**: El ofuscador elimina todas las líneas que empiezan por `import` del cuerpo del código. Si el archivo tiene un `import` dentro de un bloque `try:`, el bloque queda vacío y produce `SyntaxError` al ejecutar el código ofuscado. `main.py` ya fue diseñado para evitar esto usando `importlib.import_module()` en lugar de `import` indentado.
+
 Ejecuta el ofuscador sobre el archivo fuente:
 
 ```bash

