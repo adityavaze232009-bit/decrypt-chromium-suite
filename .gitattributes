@@ -1,2 +1,12 @@
-# Auto detect text files and perform LF normalization
+# Forzar finales de línea Windows para archivos de texto
 * text=auto
+
+*.py text eol=crlf
+*.md text eol=crlf
+*.txt text eol=crlf
+
+# Archivos binarios (no intentar mezclarlos/unirlos)
+*.exe binary
+*.ico binary
+*.png binary
+*.jpg binary
