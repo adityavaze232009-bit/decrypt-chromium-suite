@@ -1,5 +1,8 @@
 # 🛡️ Chromium Credentials Auditor Suite
 
+> [!NOTE]
+> [English Version](README.en.md) | **Versión en Español**
+
 <div align="center">
 
 ![Windows](https://img.shields.io/badge/Windows-0078D6?style=for-the-badge&logo=windows&logoColor=white)

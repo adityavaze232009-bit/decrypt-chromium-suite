@@ -1,5 +1,8 @@
 # 🛡️ Guía Maestra de Ofuscación Híbrida
 
+> [!NOTE]
+> [English Version](OBFUSCATION_GUIDE.en.md) | **Versión en Español**
+
 Esta guía detalla el flujo de trabajo profesional para proteger la **Chromium Auditor Suite** contra ingeniería inversa, análisis estático y detecciones heurísticas de antivirus (AV/EDR).
 
 ---
@@ -237,6 +240,3 @@ start /b ChromiumAuditor.exe
 * **Timestamp y Firma**: El `autocert.sh` usa DigiCert TSA para que el timestamp de la firma sea verosímil y no coincida con el tiempo de sistema si este fue alterado.
 
 ---
-<div align="center">
-Protección Avanzada para Operaciones de Seguridad Profesional
-</div>

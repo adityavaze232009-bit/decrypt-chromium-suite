@@ -1,6 +1,9 @@
 # Análisis de Pentesting: Decrypt Chrome Passwords
 
 > [!NOTE]
+> [English Version](REFACTOR.en.md) | **Versión en Español**
+
+> [!NOTE]
 > **Documento histórico** — Este archivo describe el plan de análisis inicial del proyecto. Todas las mejoras aquí descritas han sido implementadas en `main.py`. El nombre de archivo referenciado (`decrypt_chromium_passwd.py`) fue renombrado a `main.py` durante la refactorización.
 
 Este repositorio contiene una herramienta diseñada para extraer y descifrar las credenciales guardadas en Google Chrome en entornos Windows. A continuación, se presenta un desglose de su funcionamiento técnico, junto con una propuesta de mejoras, optimizaciones y automatizaciones para elevar su nivel en auditorías de seguridad profesional.
@@ -83,4 +86,6 @@ Sustituir el CSV por un reporte HTML dinámico y elegante:
 | **Exfiltración Remota** | Auditoría | Alto (Rapidez de datos) |
 | **Reporte HTML UI** | Presentación | Medio (Profesionalismo) |
 | **Wipe Artifacts** | Seguridad | Medio (Antiforense) |
-| **Portabilidad (.exe)** | Despliegue | Muy Alto (Sin dependencias) |
+| **Portability (.exe)** | Despliegue | Muy Alto (Sin dependencias) |
+
+---
