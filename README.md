@@ -111,6 +111,53 @@ pyinstaller --onefile --noconsole --name "ChromiumAuditor" main.py
 
 ---
 
+## 📡 Configuración de Exfiltración
+
+### 🤖 Telegram
+
+Necesitas dos valores: el **Token del Bot** y el **ID del Destino**.
+
+**Token del Bot** — Obténlo hablando con `@BotFather` en Telegram:
+
+```text
+1234567890:ABCdefGHIjklMNOpqrSTUvwxYZ
+```
+
+**ID del Destino** — El campo `-c` / `HARDCODED_TG_ID` acepta tres tipos:
+
+| Tipo de Destino | Formato del ID | Cómo Obtenerlo |
+| :--- | :--- | :--- |
+| 💬 **Chat Personal** | Número positivo `987654321` | Habla con `@userinfobot` |
+| 👥 **Grupo Privado** | Número negativo `-1001234567890` | Añade `@RawDataBot` al grupo |
+| 📢 **Canal Privado** | Número negativo `-1001234567890` | Añade el bot al canal como admin |
+
+> [!IMPORTANT]
+> Para **grupos y canales**, añade tu bot como miembro con permisos de **"Enviar Archivos"** antes de usarlo.
+> Para **chats personales**, envía primero un mensaje a tu bot para iniciar la conversación.
+
+### 🎮 Discord
+
+Obten la URL del Webhook en: **Canal → Editar Canal → Integraciones → Webhooks → Crear Webhook**
+
+```text
+https://discord.com/api/webhooks/1234567890/TOKEN_SECRETO_AQUI
+```
+
+Pega esa URL completa en `-d` / `HARDCODED_DS_WEBHOOK`.
+
+### 🔒 Recomendación de Seguridad Operacional
+
+Para máxima discrección y trazabilidad cero:
+
+1. Crea un **canal privado exclusivo** para cada auditoría.
+2. Añade el bot como único administrador del canal.
+3. Usa el ID del canal como `HARDCODED_TG_ID`.
+4. **Elimina el canal y el bot** al finalizar la auditoría.
+
+Así, si el token fuera comprometido, el atacante solo accedería a un canal vacío y eliminado.
+
+---
+
 ## ⚖️ Aviso Legal y Ético
 
 > [!CAUTION]

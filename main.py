@@ -17,9 +17,10 @@ from datetime import datetime
 # =========================================================================
 # Tip: Convierte tus credenciales en Base64 con cualquier conversor online.
 # Ej (Base64): "MTIzNDU2Nzg5MDpBQkMtREVGM..."
-HARDCODED_TG_TOKEN   = ""  # Token de Telegram (B64 o Plano)
-HARDCODED_TG_ID      = ""  # Chat ID           (B64 o Plano)
-HARDCODED_DS_WEBHOOK = ""  # Discord Webhook   (B64 o Plano)
+# =========================================================================
+HARDCODED_TG_TOKEN   = ""  # Token del bot de Telegram      (B64 o Plano)
+HARDCODED_TG_ID      = ""  # ID de destino: chat/grupo/canal (B64 o Plano)
+HARDCODED_DS_WEBHOOK = ""  # URL del Webhook de Discord      (B64 o Plano)
 # =========================================================================
 
 if sys.platform != "win32":
