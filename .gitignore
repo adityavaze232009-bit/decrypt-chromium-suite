@@ -29,11 +29,9 @@ venv.bak
 # PyInstaller
 *.spec
 
-# 🛡️ Auditoría (Reportes y Logs)
-audit_report.html
-audit_report.csv
-pentest_audit.log
-tmp.db
+# 🛡️ Auditoría (Carpeta oculta de salida y temporales)
+.audit/
+tmp_audit_*.db
 
 # IDEs
 .vscode/

