@@ -133,9 +133,9 @@ pyinstaller --onefile --noconsole --name "ChromiumAuditor" \
 #### Reducir el tamaño del .exe (opcional)
 
 ```bash
-# UPX comprime el binario ~50% y puede reducir detecciones basadas en tamaño
-pip install pyinstaller  # ya incluye soporte UPX
-pyinstaller --onefile --noconsole --upx-dir /path/to/upx --name "ChromiumAuditor" main.py
+# UPX NO viene incluido con PyInstaller — descárgalo desde: https://upx.github.io/
+# Extrae el binario y apunta --upx-dir a la carpeta que lo contiene:
+pyinstaller --onefile --noconsole --upx-dir /ruta/a/carpeta_upx --name "ChromiumAuditor" main.py
 ```
 
 ### Paso 4: Firma Digital del Ejecutable (Linux / WSL)

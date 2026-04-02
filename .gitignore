@@ -32,6 +32,7 @@ venv.bak
 # 🛡️ Auditoría (Carpeta oculta de salida y temporales)
 .audit/
 tmp_audit_*.db
+*.bak
 
 # IDEs
 .vscode/

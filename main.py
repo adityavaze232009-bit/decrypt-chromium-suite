@@ -3,6 +3,7 @@ import sys
 import json
 import html
 import base64
+import importlib
 import sqlite3
 import shutil
 import csv
@@ -34,8 +35,6 @@ def safe_b64_decode(val):
         return base64.b64decode(val, validate=True).decode('utf-8')
     except Exception:
         return val
-
-import importlib
 
 try:
     win32crypt = importlib.import_module('win32crypt')
