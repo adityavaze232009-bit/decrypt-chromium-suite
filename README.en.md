@@ -91,16 +91,20 @@ You can pre-configure the script by editing the `HARDCODED CREDENTIALS` section 
 
 ---
 
-## 📦 Professional Compilation (.exe)
+## 📦 Professional Compilation and Obfuscation
+
+To generate a robust, stealthy, and (optionally) obfuscated executable, use the included **`build.py`** script. This script automates the configuration for both PyInstaller and PyArmor.
 
 ```bash
-# Stealthy compilation: no console window, single portable file
-pyinstaller --onefile --noconsole --name "ChromiumAuditor" main.py
+# Recommended Use: single file, no console, and custom name
+python build.py --name "SysHealth" --onefile --noconsole
+
+# For a quick compilation without obfuscation (PyInstaller only)
+python build.py --no-obf --name "ChromiumAuditor"
 ```
 
-> [!NOTE]
-> `--noconsole` is **mandatory** for total stealth. Without it, a black terminal window appears upon execution.
-> Compatible with **Batch** calls (`call ChromiumAuditor.exe`) and background execution (`start /b ChromiumAuditor.exe`).
+> [!TIP]
+> You can see all customization options (icons, output folders, etc.) by running `python build.py --help`.
 
 ### 🛡️ Hardening and Obfuscation
 To protect the binary against reverse engineering and antivirus, see the [Hybrid Obfuscation Guide](docs/OBFUSCATION_GUIDE.en.md).

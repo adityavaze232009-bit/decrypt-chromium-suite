@@ -23,10 +23,10 @@ pip install pyarmor pyinstaller -r requirements.txt
 
 ### 2. Binary Compilation (Windows)
 
-Generate the obfuscated and packaged `.exe`:
+Generate the `.exe` using the automation script:
 
 ```powershell
-pyarmor pack -e " --onefile --noconsole --name 'ChromiumAuditor' " main.py
+python build.py --name "ChromiumAuditor" --onefile --noconsole
 ```
 
 *The result will be in `dist/ChromiumAuditor.exe`.*
@@ -84,7 +84,7 @@ Run the full process under Wine:
 
 ```bash
 wine python ofuscator.py main.py
-wine python -m pyarmor pack -e " --onefile --noconsole --name 'ChromiumAuditor' " main.py
+wine python build.py --name "ChromiumAuditor" --onefile --noconsole
 ```
 
 ### 5. In-Situ Signing

