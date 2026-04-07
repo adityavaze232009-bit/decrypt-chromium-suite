@@ -25,6 +25,14 @@ venv
 ENV
 env.bak
 venv.bak
+.pyarmor
+config.pyarmor
+resources.list
+hook-*.py
+*.manifest
+*.spec
+dist/
+.pyarmor/
 
 # PyInstaller
 *.spec

